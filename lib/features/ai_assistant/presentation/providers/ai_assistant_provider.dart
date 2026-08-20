@@ -90,6 +90,16 @@ class AiAssistantNotifier extends StateNotifier<AiAssistantState> {
     state = state.copyWith(
       messages: [...state.messages, aiMsg],
       isThinking: false,
+      currentlyPlayingId: aiMsg.id,
+    );
+
+    // Automatically speak out bot reply via Text-To-Speech
+    await VoiceService().speak(
+      reply,
+      languageCode: langCode,
+      onComplete: () {
+        state = state.copyWith(clearPlaying: true);
+      },
     );
   }
 
@@ -99,8 +109,13 @@ class AiAssistantNotifier extends StateNotifier<AiAssistantState> {
       state = state.copyWith(clearPlaying: true);
     } else {
       state = state.copyWith(currentlyPlayingId: messageId);
-      await VoiceService().speak(text, languageCode: '$langCode-IN');
-      state = state.copyWith(clearPlaying: true);
+      await VoiceService().speak(
+        text,
+        languageCode: langCode,
+        onComplete: () {
+          state = state.copyWith(clearPlaying: true);
+        },
+      );
     }
   }
 }

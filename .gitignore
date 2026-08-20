@@ -1,0 +1,21 @@
+# Environment Variable & Secret Files
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+*.env
+
+# Flutter & Build Artifacts
+build/
+.dart_tool/
+.pub-cache/
+.pub/
+*.apk
+*.aab
+*.app
+
+# Node & JS Artifacts
+node_modules/
+dist/
+.tmp/

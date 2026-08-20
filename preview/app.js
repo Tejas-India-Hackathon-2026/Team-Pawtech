@@ -974,13 +974,28 @@ async function loadRealNearbyVetsOverpass() {
       const overpassQuery = `[out:json][timeout:30];(node["amenity"="veterinary"](around:50000,${lat},${lon});way["amenity"="veterinary"](around:50000,${lat},${lon});node["amenity"="animal_shelter"](around:50000,${lat},${lon});way["amenity"="animal_shelter"](around:50000,${lat},${lon});node["healthcare"="veterinary"](around:50000,${lat},${lon});way["healthcare"="veterinary"](around:50000,${lat},${lon});node["amenity"="hospital"](around:50000,${lat},${lon});way["amenity"="hospital"](around:50000,${lat},${lon}););out center;`;
 
       try {
-        const response = await fetch('https://overpass-api.de/api/interpreter', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-          body: 'data=' + encodeURIComponent(overpassQuery)
-        });
+        const endpoints = [
+          'https://overpass-api.de/api/interpreter',
+          'https://overpass.kumi.systems/api/interpreter',
+          'https://maps.mail.ru/osm/tools/overpass/api/interpreter'
+        ];
 
-        if (!response.ok) throw new Error('Overpass API network error');
+        let response = null;
+        for (const ep of endpoints) {
+          try {
+            const res = await fetch(ep, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+              body: 'data=' + encodeURIComponent(overpassQuery)
+            });
+            if (res.ok) {
+              response = res;
+              break;
+            }
+          } catch (_) {}
+        }
+
+        if (!response || !response.ok) throw new Error('Overpass API network error');
 
         const data = await response.json();
         const elements = data.elements || [];

@@ -89,14 +89,33 @@ class HelpNotifier extends StateNotifier<HelpState> {
 out center;
 ''';
 
-      final Uri url = Uri.parse('https://overpass-api.de/api/interpreter');
-      final response = await http.post(
-        url,
-        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-        body: {'data': overpassQuery},
-      ).timeout(const Duration(seconds: 25));
+      final List<String> overpassEndpoints = [
+        'https://overpass-api.de/api/interpreter',
+        'https://overpass.kumi.systems/api/interpreter',
+        'https://maps.mail.ru/osm/tools/overpass/api/interpreter',
+      ];
 
-      if (response.statusCode == 200) {
+      http.Response? response;
+      for (final endpoint in overpassEndpoints) {
+        try {
+          final res = await http.post(
+            Uri.parse(endpoint),
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: {'data': overpassQuery},
+          ).timeout(const Duration(seconds: 15));
+
+          if (res.statusCode == 200) {
+            response = res;
+            break;
+          } else if (res.statusCode == 429) {
+            print('[Overpass] Endpoint $endpoint returned 429 Rate Limit. Trying backup endpoint...');
+          }
+        } catch (e) {
+          print('[Overpass] Endpoint $endpoint failed: $e. Trying backup endpoint...');
+        }
+      }
+
+      if (response != null && response.statusCode == 200) {
         final Map<String, dynamic> data = jsonDecode(response.body);
         final List<dynamic> elements = data['elements'] ?? [];
 

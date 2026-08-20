@@ -16,10 +16,13 @@ class PashuMitraChatScreen extends ConsumerStatefulWidget {
   ConsumerState<PashuMitraChatScreen> createState() => _PashuMitraChatScreenState();
 }
 
-class _PashuMitraChatScreenState extends ConsumerState<PashuMitraChatScreen> {
+class _PashuMitraChatScreenState extends ConsumerState<PashuMitraChatScreen>
+    with SingleTickerProviderStateMixin {
   final TextEditingController _textController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   bool _isListening = false;
+  late AnimationController _pulseController;
+  late Animation<double> _pulseAnimation;
 
   final samplePrompts = [
     '🐶 Puppy Vaccination Chart',
@@ -30,7 +33,20 @@ class _PashuMitraChatScreenState extends ConsumerState<PashuMitraChatScreen> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+    );
+    _pulseAnimation = Tween<double>(begin: 1.0, end: 1.45).animate(
+      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
   void dispose() {
+    _pulseController.dispose();
     _textController.dispose();
     _scrollController.dispose();
     VoiceService().stopSpeaking();
@@ -61,23 +77,97 @@ class _PashuMitraChatScreenState extends ConsumerState<PashuMitraChatScreen> {
     }
   }
 
+  void _showPermissionDialog() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: const [
+            Icon(Icons.mic_off, color: AppColors.emergencyRed),
+            SizedBox(width: 8),
+            Text('Microphone Access Needed', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+          ],
+        ),
+        content: const Text(
+          'Microphone permission is required to use voice recognition in Hindi & English.\n\nPlease enable Microphone permission in app settings.',
+          style: TextStyle(fontSize: 13, height: 1.4),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+            onPressed: () {
+              Navigator.pop(ctx);
+              VoiceService().openSettings();
+            },
+            child: const Text('Open Settings'),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _toggleMic() async {
     final currentLocale = ref.read(localeProvider);
+    final langCode = currentLocale.languageCode == 'hi' ? 'hi-IN' : 'en-IN';
+
     if (_isListening) {
       await VoiceService().stopListening();
+      _pulseController.stop();
+      _pulseController.reset();
       setState(() => _isListening = false);
     } else {
       setState(() => _isListening = true);
-      await VoiceService().startListening(
-        languageCode: '${currentLocale.languageCode}-IN',
-        onResult: (text) {
+      _pulseController.repeat(reverse: true);
+
+      final started = await VoiceService().startListening(
+        languageCode: langCode,
+        onResult: (recognizedText) {
           setState(() {
-            _textController.text = text;
-            _isListening = false;
+            // Speech-to-text converted text automatically fills into chat input box
+            _textController.text = recognizedText;
           });
-          _sendMessage(text);
+        },
+        onError: (errorMsg) {
+          _pulseController.stop();
+          _pulseController.reset();
+          setState(() => _isListening = false);
+
+          if (errorMsg == 'permanently_denied' || errorMsg == 'permission_denied') {
+            _showPermissionDialog();
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  'Voice Error: $errorMsg. You can type directly in the text field below.',
+                  style: const TextStyle(fontSize: 12),
+                ),
+                backgroundColor: AppColors.emergencyRed,
+                duration: const Duration(seconds: 4),
+              ),
+            );
+          }
+        },
+        onDone: () {
+          _pulseController.stop();
+          _pulseController.reset();
+          setState(() => _isListening = false);
         },
       );
+
+      if (!started) {
+        _pulseController.stop();
+        _pulseController.reset();
+        setState(() => _isListening = false);
+      }
     }
   }
 
@@ -324,7 +414,7 @@ class _PashuMitraChatScreenState extends ConsumerState<PashuMitraChatScreen> {
                 ),
               ),
 
-            // Input Bar with STT Voice & Send
+            // Input Bar with Pulse Animated STT Voice & Text Input
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
@@ -333,17 +423,38 @@ class _PashuMitraChatScreenState extends ConsumerState<PashuMitraChatScreen> {
               ),
               child: Row(
                 children: [
-                  IconButton(
-                    style: IconButton.styleFrom(
-                      backgroundColor: _isListening
-                          ? AppColors.emergencyRed
-                          : AppColors.primaryContainer,
+                  // Animated Mic Button with Glow / Pulse Effect
+                  AnimatedBuilder(
+                    animation: _pulseAnimation,
+                    builder: (context, child) {
+                      return Container(
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          boxShadow: _isListening
+                              ? [
+                                  BoxShadow(
+                                    color: AppColors.emergencyRed.withOpacity(0.5),
+                                    blurRadius: 14 * _pulseAnimation.value,
+                                    spreadRadius: 5 * _pulseAnimation.value,
+                                  ),
+                                ]
+                              : [],
+                        ),
+                        child: child,
+                      );
+                    },
+                    child: IconButton(
+                      style: IconButton.styleFrom(
+                        backgroundColor: _isListening
+                            ? AppColors.emergencyRed
+                            : AppColors.primaryContainer,
+                      ),
+                      icon: Icon(
+                        _isListening ? Icons.mic : Icons.mic_none,
+                        color: _isListening ? Colors.white : AppColors.primary,
+                      ),
+                      onPressed: _toggleMic,
                     ),
-                    icon: Icon(
-                      _isListening ? Icons.mic : Icons.mic_none,
-                      color: _isListening ? Colors.white : AppColors.primary,
-                    ),
-                    onPressed: _toggleMic,
                   ),
                   const SizedBox(width: 8),
 
@@ -352,7 +463,9 @@ class _PashuMitraChatScreenState extends ConsumerState<PashuMitraChatScreen> {
                       controller: _textController,
                       onSubmitted: (_) => _sendMessage(),
                       decoration: InputDecoration(
-                        hintText: 'Ask in ${AppLanguages.getLanguageName(lang)} or speak...',
+                        hintText: _isListening
+                            ? '🎤 Listening in ${lang == "hi" ? "Hindi" : "English"}...'
+                            : 'Ask in ${AppLanguages.getLanguageName(lang)} or speak...',
                         filled: true,
                         fillColor: AppColors.surfaceVariant,
                         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
