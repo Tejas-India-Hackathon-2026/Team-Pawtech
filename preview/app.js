@@ -5,13 +5,15 @@ let currentRole = 'User';
 let currentScreen = 'home';
 let isSpeaking = false;
 
-// Identify Animal State Variables (Requirements 1-12)
+// Identify Animal State Variables
 let uploadedAnimalImageData = null;
 let uploadedAnimalFileName = null;
 let uploadedAnimalFileSize = null;
 let uploadErrorText = null;
 let isAnalyzingState = false;
 let supabaseStorageSavedUrl = null;
+// Stores the parsed Gemini Vision result for the current scan
+let animalScanResult = null;
 
 const translations = {
   en: {
@@ -202,26 +204,148 @@ function handleAnimalFileSelect(event) {
   reader.readAsDataURL(file);
 }
 
-// Requirement 5, 6, 8, 9: Process Upload, Loading state, Supabase Storage, and TensorFlow Model Check
-function processAnimalUploadAndScan() {
+// Process Upload, call Gemini Vision API, display result
+async function processAnimalUploadAndScan() {
   if (!uploadedAnimalImageData) {
-    uploadErrorText = "Please select or capture an image first.";
+    uploadErrorText = 'Please select or capture an image first.';
     renderScreen();
     return;
   }
 
-  // Requirement 5: Show Loading State
+  // Show loading spinner
   isAnalyzingState = true;
+  animalScanResult = null;
   renderScreen();
 
-  setTimeout(() => {
-    // Requirement 9: Upload to Supabase Storage and Save Image URL
+  try {
+    // Save fake Supabase URL (storage upload simulation)
     supabaseStorageSavedUrl = `https://supabase.co/storage/v1/object/public/animal-photos/sightings/${Date.now()}_${uploadedAnimalFileName || 'photo.jpg'}`;
 
+    // Extract base64 data (strip data:image/...;base64, prefix)
+    const base64Image = uploadedAnimalImageData.replace(/^data:image\/\w+;base64,/, '');
+
+    // Try Gemini Vision via Supabase Edge Function first
+    const geminiApiKey = (window.VITE_GEMINI_API_KEY || window.GEMINI_API_KEY || '').trim();
+
+    let result = null;
+
+    if (geminiApiKey) {
+      // Direct Gemini API call (web preview mode)
+      const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`;
+      const prompt = `You are PashuRakhshak AI, an expert zoologist trained on the iNaturalist dataset with knowledge of 10,000+ species including Indian and global wildlife.
+
+STEP 1 — IMAGE QUALITY CHECK:
+Assess image quality. If severely blurry, too dark, or no animal visible, set image_quality to "poor" and is_uncertain to true. Otherwise "good" or "acceptable".
+
+STEP 2 — SPECIES IDENTIFICATION:
+Identify the animal using ALL visual cues: body shape, fur/scale/feather pattern, coloration, size, limbs, face. Apply iNaturalist taxonomy knowledge.
+
+STEP 3 — CONFIDENCE SCORING:
+Assign honest confidence 0.0–1.0. If confidence < 0.60, set is_uncertain: true and fill top_alternatives with 3 best matches. If >= 0.60, is_uncertain: false, top_alternatives: [].
+
+Return ONLY valid JSON (no markdown):
+{
+  "common_name": "Most likely species name",
+  "scientific_name": "Binomial name",
+  "breed": "Subspecies or family",
+  "confidence": 0.87,
+  "is_uncertain": false,
+  "image_quality": "good",
+  "image_quality_note": null,
+  "top_alternatives": [
+    { "common_name": "Alt 1", "scientific_name": "...", "confidence": 0.45 },
+    { "common_name": "Alt 2", "scientific_name": "...", "confidence": 0.30 },
+    { "common_name": "Alt 3", "scientific_name": "...", "confidence": 0.15 }
+  ],
+  "danger_level": "safe",
+  "is_domestic": true,
+  "diet": "Diet info",
+  "habitat": "Habitat in India",
+  "first_aid": "First aid & rescue instructions",
+  "general_care": "Vet & care guidelines",
+  "audio_summary": "Short 2-sentence summary for TTS"
+}
+
+IMPORTANT: For Schedule I protected species flag Forest Dept / Wildlife SOS in first_aid. For venomous species set danger_level to venomous.
+Language: ${currentLanguage}`;
+
+      const resp = await fetch(geminiUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [
+            { text: prompt },
+            { inline_data: { mime_type: 'image/jpeg', data: base64Image } }
+          ]}],
+          generationConfig: { temperature: 0.1, maxOutputTokens: 1200 }
+        })
+      });
+
+      if (resp.ok) {
+        const data = await resp.json();
+        const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
+        const cleaned = rawText.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
+        try { result = JSON.parse(cleaned); } catch (_) { result = null; }
+      }
+    }
+
+    // If Gemini direct call failed/skipped, use uncertain fallback
+    if (!result) {
+      result = {
+        common_name: 'Unidentified Animal',
+        scientific_name: 'Fauna incertae sedis',
+        breed: 'Unknown',
+        confidence: 0.0,
+        is_uncertain: true,
+        image_quality: 'poor',
+        image_quality_note: 'Add your Gemini API key in the .env file (VITE_GEMINI_API_KEY) to enable live AI identification.',
+        top_alternatives: [],
+        danger_level: 'safe',
+        is_domestic: false,
+        diet: 'Unable to determine without species identification.',
+        habitat: 'Unable to determine.',
+        first_aid: 'If the animal appears injured, maintain safe distance. Contact Wildlife SOS: 1800-200-9122.',
+        general_care: 'Consult a licensed veterinarian for accurate species identification.',
+        audio_summary: 'Animal identification unavailable. Please add a Gemini API key or try with a clearer photo.'
+      };
+    }
+
+    // Enforce confidence threshold
+    if (typeof result.confidence === 'number' && result.confidence < 0.60) {
+      result.is_uncertain = true;
+    }
+    if (!Array.isArray(result.top_alternatives)) {
+      result.top_alternatives = [];
+    }
+
+    animalScanResult = result;
     isAnalyzingState = false;
     currentScreen = 'identify-result';
     renderScreen();
-  }, 1200);
+
+  } catch (err) {
+    console.error('[processAnimalUploadAndScan] Error:', err);
+    animalScanResult = {
+      common_name: 'Analysis Failed',
+      scientific_name: 'Fauna incertae sedis',
+      breed: 'Unknown',
+      confidence: 0.0,
+      is_uncertain: true,
+      image_quality: 'poor',
+      image_quality_note: `Error: ${err.message}. Please try again with a clearer, well-lit photo.`,
+      top_alternatives: [],
+      danger_level: 'safe',
+      is_domestic: false,
+      diet: 'Unable to determine.',
+      habitat: 'Unable to determine.',
+      first_aid: 'If the animal appears injured or dangerous, maintain safe distance and contact Wildlife SOS: 1800-200-9122.',
+      general_care: 'Consult a licensed veterinarian.',
+      audio_summary: 'Animal identification failed. Please try with a clearer photo.'
+    };
+    isAnalyzingState = false;
+    currentScreen = 'identify-result';
+    renderScreen();
+  }
 }
 
 function renderScreen() {
@@ -418,7 +542,31 @@ function renderScreen() {
       `;
     }
   } else if (currentScreen === 'identify-result') {
+    const r = animalScanResult;
+    const confPct = r ? Math.round((r.confidence || 0) * 100) : 0;
+    const isUncertain = r ? (r.is_uncertain === true || (r.confidence || 0) < 0.60) : true;
+    const alts = (r && Array.isArray(r.top_alternatives)) ? r.top_alternatives : [];
+    const dangerColor = r && r.danger_level === 'venomous' ? '#dc2626' : r && r.danger_level === 'high' ? '#ea580c' : r && r.danger_level === 'moderate' ? '#d97706' : '#059669';
+    const dangerLabel = r ? (r.danger_level || 'safe').charAt(0).toUpperCase() + (r.danger_level || 'safe').slice(1) : 'Safe';
+
     container.innerHTML = `
+      ${isUncertain && r ? `
+        <div style="background:#fef9c3; border:1px solid #fde047; padding:10px 12px; border-radius:12px; margin-bottom:10px; font-size:11px; color:#713f12;">
+          <b><i class="fa-solid fa-triangle-exclamation" style="color:#ca8a04;"></i> Low Confidence Identification</b><br>
+          ${r.image_quality_note || 'Confidence below 60%. Results may be inaccurate — please consult an expert.'}
+          ${alts.length > 0 ? `
+            <div style="margin-top:8px; font-weight:bold; font-size:10px;">Top Possible Matches:</div>
+            <div style="display:flex; flex-direction:column; gap:3px; margin-top:4px;">
+              ${alts.map((a, i) => `
+                <div style="display:flex; justify-content:space-between; background:rgba(255,255,255,0.6); padding:4px 8px; border-radius:6px;">
+                  <span>${i+1}. ${a.common_name} <span style="font-style:italic; color:#92400e;">— ${a.scientific_name}</span></span>
+                  <span style="font-weight:900; color:#b45309;">${Math.round((a.confidence||0)*100)}%</span>
+                </div>`).join('')}
+            </div>
+          ` : ''}
+        </div>
+      ` : ''}
+
       <div class="result-card">
         ${uploadedAnimalImageData ? `
           <div style="margin-bottom:12px; text-align:center;">
@@ -428,20 +576,32 @@ function renderScreen() {
 
         <div style="display:flex; gap:12px; align-items:center; margin-bottom:10px;">
           <div style="width:44px; height:44px; background:#d1fae5; border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:22px; color:var(--primary);">
-            <i class="fa-solid fa-dog"></i>
+            <i class="fa-solid ${r && !isUncertain ? 'fa-paw' : 'fa-question-circle'}"></i>
           </div>
           <div>
-            <h4 style="font-size:15px; font-weight:800;">Indian Pariah Dog (Desi Indie)</h4>
-            <p style="font-size:10px; color:var(--text-secondary); font-style:italic;">Canis lupus familiaris</p>
+            <h4 style="font-size:14px; font-weight:800;">${r ? r.common_name : 'Analyzing...'}</h4>
+            <p style="font-size:10px; color:var(--text-secondary); font-style:italic;">${r ? (r.scientific_name || '') : ''}</p>
+            <p style="font-size:10px; color:var(--text-secondary);">${r ? (r.breed || '') : ''}</p>
             <div style="display:flex; gap:4px; margin-top:4px;">
-              <span class="pill safe">94% Confidence</span>
-              <span class="pill safe">Safe / Domestic</span>
+              <span class="pill ${isUncertain ? 'warning' : 'safe'}">${confPct}% Confidence</span>
+              <span class="pill" style="background:${dangerColor}20; color:${dangerColor};">${dangerLabel}</span>
+              ${r && r.is_domestic ? '<span class="pill safe">Domestic</span>' : r ? '<span class="pill info">Wild</span>' : ''}
             </div>
           </div>
         </div>
 
-        <hr style="border:none; border-top:1px solid var(--border); margin:8px 0;">
+        ${r && r.diet ? `
+          <hr style="border:none; border-top:1px solid var(--border); margin:8px 0;">
+          <div style="font-size:11px; margin-bottom:6px;"><b style="color:var(--primary);"><i class="fa-solid fa-seedling"></i> Diet:</b> ${r.diet}</div>
+        ` : ''}
+        ${r && r.habitat ? `
+          <div style="font-size:11px; margin-bottom:6px;"><b style="color:#0284c7;"><i class="fa-solid fa-earth-asia"></i> Habitat:</b> ${r.habitat}</div>
+        ` : ''}
+        ${r && r.general_care ? `
+          <div style="font-size:11px;"><b style="color:#7c3aed;"><i class="fa-solid fa-stethoscope"></i> Care:</b> ${r.general_care}</div>
+        ` : ''}
 
+        <hr style="border:none; border-top:1px solid var(--border); margin:8px 0;">
         <button id="audioSummaryBtn" style="width:100%; background:none; border:1px solid var(--primary); color:var(--primary); padding:8px; border-radius:8px; font-size:11px; font-weight:bold; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px;" onclick="handleAudioSummaryClick()">
           <i class="fa-solid fa-volume-high" id="audioSummaryIcon"></i> <span id="audioSummaryText">Play Audio Summary</span>
         </button>
@@ -485,7 +645,7 @@ function renderScreen() {
 
           <div id="healthResultCard" style="display:none; margin-top:12px; background:white; padding:12px; border-radius:12px; border:1px solid #93c5fd; height:auto; overflow:visible;">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
-              <span style="font-size:11px; font-weight:bold;" id="screenAnimalTag">Animal: Indian Pariah Dog (94% ID)</span>
+              <span style="font-size:11px; font-weight:bold;" id="screenAnimalTag">Animal: ${r ? r.common_name : 'Unknown'} (${confPct}% ID)</span>
               <span class="pill danger" id="screenSeverityTag">Severity: Moderate</span>
             </div>
             <div style="font-size:12px; font-weight:800; color:#0369a1; margin-bottom:2px;" id="screenConditionTitle">Possible Skin Irritation</div>
@@ -501,10 +661,12 @@ function renderScreen() {
       </div>
 
       <!-- Care Tips & First Aid -->
-      <div class="result-card" style="background:#fee2e2; border-color:#fca5a5;">
-        <h6 style="color:#991b1b; font-size:12px; font-weight:bold; margin-bottom:4px;"><i class="fa-solid fa-kit-medical"></i> Immediate First Aid & Care Tips</h6>
-        <p style="font-size:11px; color:#7f1d1d; line-height:1.4;">If limping or injured, do not panic. Offer water in a shallow bowl. Clean superficial cuts with Betadine solution. Call an NGO ambulance if deep bleeding occurs.</p>
-      </div>
+      ${r && r.first_aid ? `
+        <div class="result-card" style="background:#fee2e2; border-color:#fca5a5;">
+          <h6 style="color:#991b1b; font-size:12px; font-weight:bold; margin-bottom:4px;"><i class="fa-solid fa-kit-medical"></i> Immediate First Aid & Care</h6>
+          <p style="font-size:11px; color:#7f1d1d; line-height:1.4;">${r.first_aid}</p>
+        </div>
+      ` : ''}
 
       <div style="display:flex; gap:8px;">
         <button style="flex:1; padding:10px; background:var(--primary); color:white; border:none; border-radius:10px; font-size:12px; font-weight:bold; cursor:pointer;" onclick="navigateTo('ai-assistant')"><i class="fa-solid fa-robot"></i> Ask AI Vet</button>
@@ -1354,7 +1516,9 @@ function renderAdoptListingsUI() {
 }
 
 function handleAudioSummaryClick() {
-  const text = "This animal appears to be an Indian Pariah Dog with 94 percent confidence. It is generally considered a domestic and safe animal.";
+  const text = animalScanResult && animalScanResult.audio_summary
+    ? animalScanResult.audio_summary
+    : 'Animal identification complete. Please consult a veterinarian for further guidance.';
   playVoiceText(text, currentLanguage);
 }
 

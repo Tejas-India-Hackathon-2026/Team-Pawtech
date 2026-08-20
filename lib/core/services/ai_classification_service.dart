@@ -113,6 +113,33 @@ class AnimalHealthScreeningResult {
       };
 }
 
+/// A single candidate species returned in the top-3 alternatives list
+class AnimalAlternative {
+  final String commonName;
+  final String scientificName;
+  final double confidence;
+
+  AnimalAlternative({
+    required this.commonName,
+    required this.scientificName,
+    required this.confidence,
+  });
+
+  factory AnimalAlternative.fromJson(Map<String, dynamic> json) {
+    return AnimalAlternative(
+      commonName: json['common_name'] ?? json['commonName'] ?? 'Unknown',
+      scientificName: json['scientific_name'] ?? json['scientificName'] ?? 'Unknown',
+      confidence: (json['confidence'] as num?)?.toDouble() ?? 0.0,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+    'common_name': commonName,
+    'scientific_name': scientificName,
+    'confidence': confidence,
+  };
+}
+
 class AnimalIdentificationResult {
   final String commonName;
   final String scientificName;
@@ -128,6 +155,13 @@ class AnimalIdentificationResult {
   final String? audioSummary;
   final AnimalHealthScreeningResult? healthScreening;
   final Map<String, dynamic> rawMetadata;
+  // --- Upgraded fields for broad-spectrum identification ---
+  /// True when confidence < 60% — UI should show uncertainty banner
+  final bool isUncertain;
+  /// Top-3 alternative matches when isUncertain == true
+  final List<AnimalAlternative> topAlternatives;
+  /// Describes image quality issues (blurry/dark/no animal detected)
+  final String? imageQualityNote;
 
   AnimalIdentificationResult({
     required this.commonName,
@@ -144,6 +178,9 @@ class AnimalIdentificationResult {
     this.audioSummary,
     this.healthScreening,
     this.rawMetadata = const {},
+    this.isUncertain = false,
+    this.topAlternatives = const [],
+    this.imageQualityNote,
   });
 
   factory AnimalIdentificationResult.fromJson(Map<String, dynamic> json, ModelSource source) {
@@ -167,11 +204,24 @@ class AnimalIdentificationResult {
       screening = AnimalHealthScreeningResult.fromJson(json['health_screening']);
     }
 
+    final double conf = (json['confidence'] as num?)?.toDouble() ?? 0.5;
+    final bool uncertain = json['is_uncertain'] ?? json['isUncertain'] ?? (conf < 0.60);
+
+    // Parse top-3 alternatives list
+    final List<AnimalAlternative> alternatives = [];
+    if (json['top_alternatives'] is List) {
+      for (final item in json['top_alternatives'] as List) {
+        if (item is Map<String, dynamic>) {
+          alternatives.add(AnimalAlternative.fromJson(item));
+        }
+      }
+    }
+
     return AnimalIdentificationResult(
       commonName: json['common_name'] ?? json['commonName'] ?? 'Unknown Animal',
       scientificName: json['scientific_name'] ?? json['scientificName'] ?? 'Fauna incertae sedis',
       breedOrSubspecies: json['breed'] ?? json['breedOrSubspecies'] ?? 'General',
-      confidence: (json['confidence'] as num?)?.toDouble() ?? 0.85,
+      confidence: conf,
       dangerLevel: parseDanger(json['danger_level'] ?? json['dangerLevel']),
       isDomestic: json['is_domestic'] ?? json['isDomestic'] ?? true,
       diet: json['diet'] ?? 'Standard species diet',
@@ -182,12 +232,18 @@ class AnimalIdentificationResult {
       audioSummary: json['audio_summary'] ?? json['audioSummary'],
       healthScreening: screening,
       rawMetadata: json,
+      isUncertain: uncertain,
+      topAlternatives: alternatives,
+      imageQualityNote: json['image_quality_note'] as String?,
     );
   }
 
   AnimalIdentificationResult copyWith({
     AnimalHealthScreeningResult? healthScreening,
     Map<String, dynamic>? rawMetadata,
+    bool? isUncertain,
+    List<AnimalAlternative>? topAlternatives,
+    String? imageQualityNote,
   }) {
     return AnimalIdentificationResult(
       commonName: commonName,
@@ -204,6 +260,9 @@ class AnimalIdentificationResult {
       audioSummary: audioSummary,
       healthScreening: healthScreening ?? this.healthScreening,
       rawMetadata: rawMetadata ?? this.rawMetadata,
+      isUncertain: isUncertain ?? this.isUncertain,
+      topAlternatives: topAlternatives ?? this.topAlternatives,
+      imageQualityNote: imageQualityNote ?? this.imageQualityNote,
     );
   }
 
@@ -222,6 +281,9 @@ class AnimalIdentificationResult {
         'audioSummary': audioSummary,
         'healthScreening': healthScreening?.toJson(),
         'rawMetadata': rawMetadata,
+        'isUncertain': isUncertain,
+        'topAlternatives': topAlternatives.map((a) => a.toJson()).toList(),
+        'imageQualityNote': imageQualityNote,
       };
 }
 
@@ -244,13 +306,14 @@ abstract class AnimalClassifierService {
 }
 
 /// Level 1: Primary On-Device TFLite Animal Classifier (MobileNetV2 / iNaturalist subset)
+/// NOTE: Local TFLite model asset is not yet bundled. This class automatically delegates
+/// to GeminiVisionClassifier (Level 2 cloud) for all identifications.
 class TfLiteAnimalClassifier implements AnimalClassifierService {
-  bool _isModelLoaded = false;
   final String modelAssetPath = 'assets/models/mobilenet_v2_animal_classifier.tflite';
 
   Future<bool> checkModelAssetExists() async {
-    // Check if MobileNetV2 TensorFlow model asset is present in local assets directory
-    return false; // Not yet added to local assets
+    // TFLite model asset not yet bundled in assets/models/
+    return false;
   }
 
   @override
@@ -260,31 +323,34 @@ class TfLiteAnimalClassifier implements AnimalClassifierService {
     String? userNotes,
     String languageCode = 'en',
   }) async {
-    await Future.delayed(const Duration(milliseconds: 600));
-
+    // Local model not available — always route to Gemini Vision Cloud for
+    // broad iNaturalist-level species recognition with confidence scoring.
     final bool modelExists = await checkModelAssetExists();
-    final modelNote = modelExists
-        ? 'Loaded TensorFlow MobileNetV2 model from assets/models/mobilenet_v2_animal_classifier.tflite.'
-        : 'TensorFlow MobileNetV2 model asset not yet configured at assets/models/mobilenet_v2_animal_classifier.tflite. Executing fallback via Gemini Vision Cloud API endpoint.';
+    if (!modelExists) {
+      return GeminiVisionClassifier().identify(
+        imagePath: imagePath,
+        base64Image: base64Image,
+        userNotes: userNotes,
+        languageCode: languageCode,
+      );
+    }
 
+    // Placeholder for when TFLite model is eventually integrated:
     return AnimalIdentificationResult(
-      commonName: 'Indian Pariah Dog (Desi Dog)',
-      scientificName: 'Canis lupus familiaris',
-      breedOrSubspecies: 'Indie / South Asian Native Dog',
-      confidence: 0.94,
+      commonName: 'Unidentified Animal',
+      scientificName: 'Fauna incertae sedis',
+      breedOrSubspecies: 'Unknown',
+      confidence: 0.30,
       dangerLevel: DangerLevel.safe,
-      isDomestic: true,
-      diet: 'Omnivorous - rice, boiled eggs, dog food, lentils, fresh water. Avoid onions, garlic, chocolate.',
-      habitat: 'Indigenous to the Indian subcontinent; highly adaptable and resilient.',
-      firstAidInstructions: 'If injured or limping, do not panic. Offer water in a shallow bowl. Inspect for ticks, cuts or bites. Clean minor wounds with antiseptic Betadine solution. Call an NGO if fracture or severe bleeding is observed.',
-      generalCare: 'Very hardy breed with high natural immunity. Requires rabies and core DHLPP vaccination every year.',
-      modelUsed: modelExists ? ModelSource.tfliteOnDevice : ModelSource.geminiVisionCloud,
-      audioSummary: 'This is an Indian Pariah Dog. It is a domestic, friendly native breed. For first aid, provide clean water and clean any minor cut with antiseptic.',
-      rawMetadata: {
-        'model_configured': modelExists,
-        'model_note': modelNote,
-        'integration_point': modelAssetPath,
-      },
+      isDomestic: false,
+      diet: 'Cannot determine without species identification.',
+      habitat: 'Cannot determine.',
+      firstAidInstructions: 'Keep safe distance and contact local vet or NGO.',
+      generalCare: 'Consult a licensed veterinarian.',
+      modelUsed: ModelSource.tfliteOnDevice,
+      isUncertain: true,
+      imageQualityNote: 'On-device model returned low confidence. Upgrade to cloud analysis for better results.',
+      rawMetadata: {'model_configured': false, 'model_note': modelAssetPath},
     );
   }
 
@@ -426,20 +492,28 @@ class GeminiVisionClassifier implements AnimalClassifierService {
       }
     } catch (_) {}
 
-    await Future.delayed(const Duration(milliseconds: 1200));
+    // Cloud call failed — return an honest uncertain result instead of a
+    // hardcoded species which would be misleading.
+    await Future.delayed(const Duration(milliseconds: 300));
     return AnimalIdentificationResult(
-      commonName: 'Indian Star Tortoise',
-      scientificName: 'Geochelone elegans',
-      breedOrSubspecies: 'Reptilia / Testudinidae',
-      confidence: 0.96,
+      commonName: 'Unidentified Animal',
+      scientificName: 'Fauna incertae sedis',
+      breedOrSubspecies: 'Unknown',
+      confidence: 0.0,
       dangerLevel: DangerLevel.safe,
       isDomestic: false,
-      diet: 'Strictly herbivorous: grasses, succulents, leafy greens, hibiscus flowers. High fiber, low protein.',
-      habitat: 'Dry scrub forests and semi-arid grasslands across India.',
-      firstAidInstructions: 'Protected under Indian Wildlife Protection Act (Schedule IV). If found injured or displaced, place in a dry, warm cardboard box with air holes. Do not place in deep water (they cannot swim). Immediately alert the local Forest Department or Wildlife SOS.',
-      generalCare: 'Illegal to keep as household pet in India without official permits. Requires natural sunlight and warm temperature.',
+      diet: 'Unable to determine without species identification.',
+      habitat: 'Unable to determine.',
+      firstAidInstructions:
+          'If the animal appears injured, maintain a safe distance. Contact Wildlife SOS: 1800-200-9122 or your nearest veterinary NGO.',
+      generalCare: 'Please consult a licensed veterinarian for accurate species identification and care advice.',
       modelUsed: ModelSource.geminiVisionCloud,
-      audioSummary: 'Indian Star Tortoise identified. This is a protected species under Indian Wildlife law. Keep in a dry box and inform local Forest Department or Wildlife Rescue.',
+      audioSummary:
+          'Animal identification is currently unavailable. Please check your internet connection and try again, or consult a veterinarian.',
+      isUncertain: true,
+      imageQualityNote:
+          'Cloud Vision analysis failed. Please ensure the image is clear and well-lit, then try again.',
+      topAlternatives: [],
     );
   }
 
