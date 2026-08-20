@@ -1,0 +1,32 @@
+{
+  "name": "pashurakhshak",
+  "version": "1.0.0",
+  "description": "PashuRakhshak - Animal Welfare, AI Identification, Pet Health, and Rescue Application",
+  "main": "preview/app.js",
+  "scripts": {
+    "dev": "python -m http.server 8080 --directory preview",
+    "start": "python -m http.server 8080 --directory preview",
+    "test": "node test/run_tests.js"
+  },
+  "keywords": [
+    "pashurakhshak",
+    "animal-welfare",
+    "flutter",
+    "ai-identification"
+  ],
+  "author": "PashuRakhshak Team",
+  "license": "MIT",
+  "directories": {
+    "lib": "lib",
+    "test": "test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Tejas-India-Hackathon-2026/Team-Pawtech.git"
+  },
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/Tejas-India-Hackathon-2026/Team-Pawtech/issues"
+  },
+  "homepage": "https://github.com/Tejas-India-Hackathon-2026/Team-Pawtech#readme"
+}
