@@ -83,6 +83,8 @@ class HelpNotifier extends StateNotifier<HelpState> {
   way["amenity"="animal_shelter"](around:$radiusMeters,$lat,$lon);
   node["healthcare"="veterinary"](around:$radiusMeters,$lat,$lon);
   way["healthcare"="veterinary"](around:$radiusMeters,$lat,$lon);
+  node["shop"="pet"](around:$radiusMeters,$lat,$lon);
+  way["shop"="pet"](around:$radiusMeters,$lat,$lon);
   node["amenity"="hospital"](around:$radiusMeters,$lat,$lon);
   way["amenity"="hospital"](around:$radiusMeters,$lat,$lon);
 );
@@ -201,8 +203,11 @@ out center;
 
           OrgCategory category = OrgCategory.vetHospital;
           final String operatorType = (tags['operator:type'] ?? '').toString();
+          final String shopTag = (tags['shop'] ?? '').toString();
 
-          if (amenity == 'animal_shelter') {
+          if (shopTag == 'pet') {
+            category = OrgCategory.petStore;
+          } else if (amenity == 'animal_shelter') {
             category = OrgCategory.shelter;
           } else if (operatorType == 'government' || tags['operator']?.toString().toLowerCase().contains('govt') == true) {
             category = OrgCategory.govtVetHospital;

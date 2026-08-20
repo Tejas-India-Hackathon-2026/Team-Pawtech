@@ -971,7 +971,7 @@ async function loadRealNearbyVetsOverpass() {
       const lat = pos.coords.latitude;
       const lon = pos.coords.longitude;
 
-      const overpassQuery = `[out:json][timeout:30];(node["amenity"="veterinary"](around:50000,${lat},${lon});way["amenity"="veterinary"](around:50000,${lat},${lon});node["amenity"="animal_shelter"](around:50000,${lat},${lon});way["amenity"="animal_shelter"](around:50000,${lat},${lon});node["healthcare"="veterinary"](around:50000,${lat},${lon});way["healthcare"="veterinary"](around:50000,${lat},${lon});node["amenity"="hospital"](around:50000,${lat},${lon});way["amenity"="hospital"](around:50000,${lat},${lon}););out center;`;
+      const overpassQuery = `[out:json][timeout:30];(node["amenity"="veterinary"](around:50000,${lat},${lon});way["amenity"="veterinary"](around:50000,${lat},${lon});node["amenity"="animal_shelter"](around:50000,${lat},${lon});way["amenity"="animal_shelter"](around:50000,${lat},${lon});node["healthcare"="veterinary"](around:50000,${lat},${lon});way["healthcare"="veterinary"](around:50000,${lat},${lon});node["shop"="pet"](around:50000,${lat},${lon});way["shop"="pet"](around:50000,${lat},${lon});node["amenity"="hospital"](around:50000,${lat},${lon});way["amenity"="hospital"](around:50000,${lat},${lon}););out center;`;
 
       try {
         const endpoints = [
@@ -1043,7 +1043,9 @@ async function loadRealNearbyVetsOverpass() {
           const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
           const distKm = R * c;
 
-          const name = tags.name || tags['name:en'] || tags['name:hi'] || 'Veterinary Hospital / Clinic';
+          const isPetStore = tags.shop === 'pet';
+          const defaultName = isPetStore ? 'Pet Store & Supplies' : (tags.amenity === 'animal_shelter' ? 'Animal Shelter' : 'Veterinary Hospital / Clinic');
+          const name = tags.name || tags['name:en'] || tags['name:hi'] || defaultName;
           
           // Extract REAL phone from OpenStreetMap data - NO fake fallback numbers
           const phone = (tags.phone || tags['contact:phone'] || tags['phone:mobile'] || tags['contact:mobile'] || '').trim();
@@ -1052,7 +1054,7 @@ async function loadRealNearbyVetsOverpass() {
           const addrParts = [tags['addr:street'], tags['addr:suburb'], tags['addr:city'], tags['addr:district']].filter(Boolean);
           const addr = addrParts.length > 0 ? addrParts.join(', ') : `Near ${vLat.toFixed(4)}, ${vLon.toFixed(4)}`;
 
-          return { name, phone, website, addr, distKm, vLat, vLon, isShelter: tags.amenity === 'animal_shelter' };
+          return { name, phone, website, addr, distKm, vLat, vLon, isShelter: tags.amenity === 'animal_shelter', isPetStore };
         });
 
         results.sort((a, b) => a.distKm - b.distKm);
@@ -1062,7 +1064,7 @@ async function loadRealNearbyVetsOverpass() {
             <div style="display:flex; justify-content:space-between;">
               <div>
                 <h5 style="font-size:13px; font-weight:800;">${item.name}</h5>
-                <span class="pill safe">Verified ✓</span> ${item.isShelter ? '<span class="pill info">Animal Shelter</span>' : '<span class="pill warning">Vet Care</span>'}
+                <span class="pill safe">Verified ✓</span> ${item.isPetStore ? '<span class="pill safe" style="background:#e0f2fe; color:#0284c7;">🐾 Pet Store</span>' : item.isShelter ? '<span class="pill info">Animal Shelter</span>' : '<span class="pill warning">Vet Care</span>'}
                 <p style="font-size:11px; color:var(--text-secondary); margin-top:4px;">📍 ${item.addr}</p>
               </div>
               <div style="text-align:right;">

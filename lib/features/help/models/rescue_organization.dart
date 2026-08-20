@@ -6,6 +6,7 @@ enum OrgCategory {
   wildlifeRescue,
   animalNgo,
   govtVetHospital,
+  petStore,
 }
 
 extension OrgCategoryDetails on OrgCategory {
@@ -25,6 +26,8 @@ extension OrgCategoryDetails on OrgCategory {
         return 'Animal NGO';
       case OrgCategory.govtVetHospital:
         return 'Govt. Vet Hospital';
+      case OrgCategory.petStore:
+        return 'Pet Store & Supplies';
     }
   }
 
@@ -42,6 +45,8 @@ extension OrgCategoryDetails on OrgCategory {
         return 'shelter';
       case OrgCategory.animalNgo:
         return 'ngo';
+      case OrgCategory.petStore:
+        return 'store';
     }
   }
 }
