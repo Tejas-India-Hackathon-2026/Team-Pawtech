@@ -1731,3 +1731,198 @@ function confirmPayment() {
 // Initial render
 renderScreen();
 
+// ─── SERVICE WORKER REGISTRATION ─────────────────────────────────────────────
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js')
+      .then(() => console.log('[SW] PashuRakhshak Service Worker registered'))
+      .catch((err) => console.warn('[SW] Registration failed:', err));
+  });
+}
+
+// ─── OFFLINE DETECTION BANNER ─────────────────────────────────────────────────
+function showOfflineBanner() {
+  let banner = document.getElementById('offlineBanner');
+  if (!banner) {
+    banner = document.createElement('div');
+    banner.id = 'offlineBanner';
+    banner.style.cssText = 'position:fixed;top:0;left:0;right:0;background:#ef4444;color:white;text-align:center;padding:6px 12px;font-size:12px;font-weight:bold;z-index:9999;';
+    banner.innerHTML = '<i class="fa-solid fa-wifi-slash"></i> You are offline. Some features may be unavailable.';
+    document.body.prepend(banner);
+  }
+}
+
+function hideOfflineBanner() {
+  const banner = document.getElementById('offlineBanner');
+  if (banner) banner.remove();
+}
+
+window.addEventListener('online', hideOfflineBanner);
+window.addEventListener('offline', showOfflineBanner);
+if (!navigator.onLine) showOfflineBanner();
+
+// ─── SCAN HISTORY (localStorage) ─────────────────────────────────────────────
+const SCAN_HISTORY_KEY = 'pashu_scan_history';
+const MAX_SCAN_HISTORY = 20;
+
+function saveScanToHistory(result, imageThumb) {
+  if (!result || result.is_uncertain) return; // Only save confident results
+  try {
+    const history = getScanHistory();
+    history.unshift({
+      id: Date.now(),
+      common_name: result.common_name,
+      scientific_name: result.scientific_name,
+      confidence: result.confidence,
+      danger_level: result.danger_level,
+      timestamp: new Date().toISOString(),
+      thumb: imageThumb || null
+    });
+    // Keep only last MAX_SCAN_HISTORY items
+    localStorage.setItem(SCAN_HISTORY_KEY, JSON.stringify(history.slice(0, MAX_SCAN_HISTORY)));
+    console.log('[ScanHistory] Saved:', result.common_name);
+  } catch (e) {
+    console.warn('[ScanHistory] Could not save to localStorage:', e);
+  }
+}
+
+function getScanHistory() {
+  try {
+    return JSON.parse(localStorage.getItem(SCAN_HISTORY_KEY) || '[]');
+  } catch (_) {
+    return [];
+  }
+}
+
+function clearScanHistory() {
+  localStorage.removeItem(SCAN_HISTORY_KEY);
+}
+
+// ─── IMAGE COMPRESSION BEFORE GEMINI UPLOAD ──────────────────────────────────
+function compressImageBase64(base64DataUrl, maxDim = 1024, quality = 0.85) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      let { width, height } = img;
+      if (width > maxDim || height > maxDim) {
+        if (width > height) { height = Math.round((height * maxDim) / width); width = maxDim; }
+        else { width = Math.round((width * maxDim) / height); height = maxDim; }
+      }
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, width, height);
+      resolve(canvas.toDataURL('image/jpeg', quality));
+    };
+    img.onerror = () => resolve(base64DataUrl); // Fallback: original
+    img.src = base64DataUrl;
+  });
+}
+
+// ─── COPY SCAN RESULT TO CLIPBOARD ───────────────────────────────────────────
+function copyScanResultToClipboard() {
+  if (!animalScanResult) return;
+  const r = animalScanResult;
+  const text = [
+    `Animal: ${r.common_name} (${r.scientific_name})`,
+    `Confidence: ${Math.round((r.confidence || 0) * 100)}%`,
+    `Danger Level: ${r.danger_level || 'safe'}`,
+    `Diet: ${r.diet || 'N/A'}`,
+    `Habitat: ${r.habitat || 'N/A'}`,
+    `First Aid: ${r.first_aid || 'N/A'}`,
+    `\nIdentified by PashuRakhshak AI — pashurakshak.app`
+  ].join('\n');
+
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(() => {
+      showToast('Result copied to clipboard!');
+    }).catch(() => fallbackCopy(text));
+  } else {
+    fallbackCopy(text);
+  }
+}
+
+function fallbackCopy(text) {
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.position = 'fixed';
+  ta.style.opacity = '0';
+  document.body.appendChild(ta);
+  ta.select();
+  document.execCommand('copy');
+  document.body.removeChild(ta);
+  showToast('Result copied!');
+}
+
+// ─── NATIVE SHARE API ─────────────────────────────────────────────────────────
+function shareAnimalResult() {
+  if (!animalScanResult) return;
+  const r = animalScanResult;
+  const shareData = {
+    title: `PashuRakhshak: ${r.common_name} Identified!`,
+    text: `I identified a ${r.common_name} (${r.scientific_name}) with ${Math.round((r.confidence || 0) * 100)}% confidence using PashuRakhshak AI!\n\n${r.audio_summary || ''}`,
+    url: 'https://pashurakshak.app'
+  };
+
+  if (navigator.share) {
+    navigator.share(shareData).catch((err) => {
+      if (err.name !== 'AbortError') copyScanResultToClipboard();
+    });
+  } else {
+    copyScanResultToClipboard();
+  }
+}
+
+// ─── TOAST NOTIFICATION ───────────────────────────────────────────────────────
+function showToast(message, duration = 2500) {
+  const existing = document.getElementById('pashuToast');
+  if (existing) existing.remove();
+
+  const toast = document.createElement('div');
+  toast.id = 'pashuToast';
+  toast.style.cssText = 'position:fixed;bottom:100px;left:50%;transform:translateX(-50%);background:#1e293b;color:white;padding:10px 20px;border-radius:20px;font-size:12px;font-weight:bold;z-index:9998;animation:fadeInOut 2.5s ease;box-shadow:0 4px 12px rgba(0,0,0,0.3);';
+  toast.textContent = message;
+  document.body.appendChild(toast);
+  setTimeout(() => toast.remove(), duration);
+}
+
+// ─── CLIENT-SIDE RATE LIMITING FOR GEMINI API ─────────────────────────────────
+const geminiRateLimit = { lastCall: 0, minInterval: 3000 }; // 3s between calls
+
+function checkGeminiRateLimit() {
+  const now = Date.now();
+  if (now - geminiRateLimit.lastCall < geminiRateLimit.minInterval) {
+    const wait = Math.ceil((geminiRateLimit.minInterval - (now - geminiRateLimit.lastCall)) / 1000);
+    showToast(`Please wait ${wait}s before next scan`);
+    return false;
+  }
+  geminiRateLimit.lastCall = now;
+  return true;
+}
+
+// ─── SIMPLE EVENT ANALYTICS (console-based, no external tracking) ─────────────
+const appEvents = [];
+function trackEvent(category, action, label = '') {
+  const event = { category, action, label, timestamp: new Date().toISOString() };
+  appEvents.push(event);
+  console.log('[Analytics]', category, '→', action, label ? `(${label})` : '');
+}
+
+// Track navigation events
+const _originalNavigateTo = navigateTo;
+function navigateTo(screenId) {
+  trackEvent('Navigation', 'screen_view', screenId);
+  _originalNavigateTo(screenId);
+}
+
+// ─── DEEP LINK URL ROUTING ────────────────────────────────────────────────────
+(function initDeepLinkRouting() {
+  const params = new URLSearchParams(window.location.search);
+  const screen = params.get('screen');
+  const validScreens = ['home', 'identify', 'help', 'adopt', 'community', 'ai-assistant', 'report-emergency', 'pet-health', 'profile'];
+  if (screen && validScreens.includes(screen)) {
+    currentScreen = screen;
+    renderScreen();
+  }
+})();
