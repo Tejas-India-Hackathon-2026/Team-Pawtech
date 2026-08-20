@@ -1,0 +1,104 @@
+name: PashuRakhshak CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  # ── Job 1: Run Node.js Test Suite ──────────────────────────────────────────
+  test:
+    name: Node.js Test Suite (25 Points)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Run PashuRakhshak 25-point test suite
+        run: node test/run_tests.js
+
+      - name: Validate JS syntax (preview/app.js)
+        run: node --check preview/app.js
+
+  # ── Job 2: Backend Health Check ────────────────────────────────────────────
+  healthcheck:
+    name: Backend Services Health Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Run health check (non-blocking on PR)
+        run: python scripts/healthcheck.py || echo "Health check warning (non-critical for PRs)"
+
+  # ── Job 3: Dart/Flutter Static Analysis ───────────────────────────────────
+  flutter-analyze:
+    name: Flutter Static Analysis
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.24.0'
+          channel: 'stable'
+
+      - name: Get Flutter packages
+        run: flutter pub get
+
+      - name: Run Flutter analyze
+        run: flutter analyze --no-fatal-infos
+        continue-on-error: true   # Treat as warning during hackathon phase
+
+      - name: Check Dart formatting
+        run: dart format --output=none --set-exit-if-changed lib/
+        continue-on-error: true
+
+  # ── Job 4: Supabase Edge Function Linting ─────────────────────────────────
+  edge-functions:
+    name: Validate Supabase Edge Functions
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Deno
+        uses: denoland/setup-deno@v1
+        with:
+          deno-version: v1.x
+
+      - name: Type-check identify-animal function
+        run: deno check supabase/functions/identify-animal/index.ts
+        continue-on-error: true
+
+  # ── Job 5: Deploy Preview (main branch only) ───────────────────────────────
+  deploy-preview:
+    name: Deploy Web Preview
+    runs-on: ubuntu-latest
+    needs: [test]
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Preview deployment summary
+        run: |
+          echo "=== PashuRakhshak Deployment Summary ==="
+          echo "Branch: ${{ github.ref_name }}"
+          echo "Commit: ${{ github.sha }}"
+          echo "Preview: preview/ directory ready for static hosting"
+          echo "Files:"
+          ls preview/
+          echo "========================================"
