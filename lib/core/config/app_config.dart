@@ -42,4 +42,16 @@ class AppConfig {
     'GEMINI_API_KEY',
     defaultValue: '',
   );
+
+  // Google Maps Geolocation API Key (Exact Coordinates Audit System)
+  static const String googleGeolocationApiKey = String.fromEnvironment(
+    'GOOGLE_GEOLOCATION_API_KEY',
+    defaultValue: '',
+  );
+
+  // Google Maps Geocoding API Key (Address Audit System)
+  static const String googleGeocodingApiKey = String.fromEnvironment(
+    'GOOGLE_GEOCODING_API_KEY',
+    defaultValue: '',
+  );
 }

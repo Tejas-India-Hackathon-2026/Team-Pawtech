@@ -957,6 +957,66 @@ function submitEmergencySOSReport() {
   }, 1200);
 }
 
+async function performExactCoordinatesAudit() {
+  const geoApiKey = (window.VITE_GOOGLE_GEOLOCATION_API_KEY || window.GOOGLE_GEOLOCATION_API_KEY || window.VITE_GOOGLE_MAPS_API_KEY || '').trim();
+  const geocodingApiKey = (window.VITE_GOOGLE_GEOCODING_API_KEY || window.GOOGLE_GEOCODING_API_KEY || geoApiKey).trim();
+
+  let auditResult = {
+    latitude: 24.9260,
+    longitude: 86.2250,
+    accuracyMeters: 25.0,
+    formattedAddress: 'Jamui Town, Bihar 811307',
+    provider: 'default_fallback',
+    timestamp: new Date().toISOString(),
+    isExact: false
+  };
+
+  if (geoApiKey && !geoApiKey.includes('your-google')) {
+    try {
+      const res = await fetch(`https://www.googleapis.com/geolocation/v1/geolocate?key=${geoApiKey}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ considerIp: true })
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        const lat = data.location.lat;
+        const lon = data.location.lng;
+        const accuracy = data.accuracy || 15.0;
+
+        let address = `Latitude: ${lat.toFixed(4)}, Longitude: ${lon.toFixed(4)}`;
+        if (geocodingApiKey && !geocodingApiKey.includes('your-google')) {
+          try {
+            const gRes = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lon}&key=${geocodingApiKey}`);
+            if (gRes.ok) {
+              const gData = await gRes.json();
+              if (gData.results && gData.results[0]) {
+                address = gData.results[0].formatted_address;
+              }
+            }
+          } catch (_) {}
+        }
+
+        auditResult = {
+          latitude: lat,
+          longitude: lon,
+          accuracyMeters: accuracy,
+          formattedAddress: address,
+          provider: 'google_geolocation_api',
+          timestamp: new Date().toISOString(),
+          isExact: true
+        };
+      }
+    } catch (e) {
+      console.warn('[Geolocation Audit] API query error:', e);
+    }
+  }
+
+  console.log('📍 [Exact Coordinates Audit Log]:', auditResult);
+  return auditResult;
+}
+
 function getJamuiAmarwathFallbackVets(userLat, userLon) {
   const uLat = (userLat && userLat !== 0) ? userLat : 24.9260;
   const uLon = (userLon && userLon !== 0) ? userLon : 86.2250;
