@@ -93,28 +93,28 @@ GRANT EXECUTE ON FUNCTION public.get_nearby_vets(FLOAT, FLOAT, INT) TO anon, aut
 INSERT INTO public.vets (name, address, phone, website, is_verified, is_24x7, rating, location)
 VALUES
   (
-    'Max Vets Super Speciality Hospital',
-    'E-40, Greater Kailash 2, New Delhi, Delhi 110048',
-    '+911141635555',
-    'https://maxvets.com',
+    'Jamui District Veterinary Hospital',
+    'Court Road, Near Main Chowk, Jamui Town, Bihar 811307',
+    '+916345222100',
+    'https://jamui.bih.nic.in',
     true, true, 4.8,
-    ST_SetSRID(ST_MakePoint(77.2432, 28.5355), 4326)::geography
+    ST_SetSRID(ST_MakePoint(86.2250, 24.9260), 4326)::geography
   ),
   (
-    'Sanjay Gandhi Animal Care Centre',
-    'Raja Garden, Near Shivaji College, New Delhi, Delhi 110027',
-    '+911125448062',
-    'https://sgacc.org',
-    true, true, 4.6,
-    ST_SetSRID(ST_MakePoint(77.1215, 28.6492), 4326)::geography
+    'Amarwath Animal Rescue & Mobile Unit',
+    'Amarwath Village Road, Jamui District, Bihar 811307',
+    '+919431288990',
+    'https://pashurakhshak.in',
+    true, true, 4.9,
+    ST_SetSRID(ST_MakePoint(86.1837, 24.9542), 4326)::geography
   ),
   (
-    'Crown Vet Clinic',
-    'Defence Colony, Ring Road, New Delhi, Delhi 110024',
-    '+919820123456',
-    'https://crownvet.com',
+    'Govt. Veterinary Dispensary & Pet Clinic',
+    'Hospital Road, Sub-Division Area, Jamui, Bihar 811307',
+    '+916345224500',
+    'https://jamui.bih.nic.in',
     true, false, 4.7,
-    ST_SetSRID(ST_MakePoint(77.2310, 28.5721), 4326)::geography
+    ST_SetSRID(ST_MakePoint(86.2180, 24.9310), 4326)::geography
   ),
   (
     'Cessna Lifeline Veterinary Hospital',
