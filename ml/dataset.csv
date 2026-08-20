@@ -1,0 +1,21 @@
+animal_type,problem,description,location,ngo_type
+dog,injury,Street dog hit by car bleeding from leg heavily,Delhi,animal_ngo
+bird,injury,Pigeon trapped in kite string hanging from tree branch,Mumbai,wildlife_rescue
+cat,adoption,Stray kitten found starving in alley looking for shelter,Bengaluru,shelter
+dog,vaccination,Stray puppy needs rabies vaccination and health checkup,Pune,vet_hospital
+snake,sighting,Venomous cobra entered residential house backyard,Jaipur,wildlife_rescue
+cow,fracture,Stray cow with broken leg standing on road,Lucknow,animal_ngo
+dog,mange,Stray dog with severe skin infestation itching continuously,Kolkata,animal_ngo
+owl,injury,Injured nocturnal bird with broken wing found in park,Hyderabad,wildlife_rescue
+cat,injury,Persian cat attacked by street dogs bleeding from neck,Chennai,vet_hospital
+monkey,trauma,Baby monkey fell from electric pole unconscious,Ahmedabad,wildlife_rescue
+dog,bite,Dog bitten by rabid animal showing aggression,Chandigarh,vet_hospital
+parrot,trapped,Pet bird escaped cage stuck in high window ledge,Bhopal,wildlife_rescue
+cow,illness,Dairy cow refusing food high fever and lethargy,Varanasi,govt_vet_hospital
+dog,abandoned,Pedigree Labrador tied to pole abandoned by owner,Gurugram,shelter
+cat,rescue,Cat stuck inside deep storm drain pipe for two days,Noida,animal_ngo
+eagle,injury,Large raptor bird injured by glass coated kite thread,Surat,wildlife_rescue
+dog,sterilization,Stray female dog needs animal birth control ABC surgery,Indore,animal_ngo
+goat,wound,Injured goat with deep cut bleeding on farm,Nagpur,govt_vet_hospital
+turtle,rescue,Protected star tortoise found in illegal bird market,Patna,wildlife_rescue
+dog,puppies,Litter of five newborn stray puppies without mother,Dehradun,shelter

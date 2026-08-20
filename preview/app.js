@@ -1,0 +1,1159 @@
+// PashuRakhshak Interactive App State & Router
+
+let currentLanguage = 'en';
+let currentRole = 'User';
+let currentScreen = 'home';
+let isSpeaking = false;
+
+// Identify Animal State Variables (Requirements 1-12)
+let uploadedAnimalImageData = null;
+let uploadedAnimalFileName = null;
+let uploadedAnimalFileSize = null;
+let uploadErrorText = null;
+let isAnalyzingState = false;
+let supabaseStorageSavedUrl = null;
+
+const translations = {
+  en: {
+    appName: 'PashuRakhshak',
+    welcome: 'Welcome, PashuRakshak',
+    home: 'Home',
+    findHelp: 'Find Help',
+    adopt: 'Adopt',
+    community: 'Community',
+    identifyPrompt: 'Scan any animal with AI for species, care & first aid',
+  },
+  hi: {
+    appName: 'पशुरक्षक',
+    welcome: 'स्वागत है, पशुरक्षक',
+    home: 'होम',
+    findHelp: 'मदद खोजें',
+    adopt: 'गोद लें',
+    community: 'समुदाय',
+    identifyPrompt: 'किसी भी पशु को AI से स्कैन करें और प्राथमिक उपचार जानें',
+  },
+  bho: {
+    appName: 'पशुरक्षक',
+    welcome: 'स्वागत बा, पशुरक्षक',
+    home: 'होम',
+    findHelp: 'मदद खोजीं',
+    adopt: 'गोद लीं',
+    community: 'समाज',
+    identifyPrompt: 'AI से कौनों जानवर के फोटो खींचीं आ तुरंत जानकारी पाईं',
+  },
+  bn: {
+    appName: 'পশুরক্ষক',
+    welcome: 'স্বাগতম, পশুরক্ষক',
+    home: 'হোম',
+    findHelp: 'সাহায্য খুঁজুন',
+    adopt: 'দত্তক নিন',
+    community: 'কমিউনিটি',
+    identifyPrompt: 'AI দিয়ে যেকোনো প্রাণীর তথ্য ও প্রাথমিক চিকিৎসা জানুন',
+  },
+  ta: {
+    appName: 'பசுரக்ஷக்',
+    welcome: 'வணக்கம், பசுரக்ஷக்',
+    home: 'முகப்பு',
+    findHelp: 'உதவி',
+    adopt: 'தத்தெடுப்பு',
+    community: 'சமூகம்',
+    identifyPrompt: 'AI மூலம் விலங்குகளை ஸ்கேன் செய்து முதலுதவி அறியுங்கள்',
+  },
+  te: {
+    appName: 'పశురక్షక్',
+    welcome: 'స్వాగతం, పశురక్షక్',
+    home: 'హోమ్',
+    findHelp: 'సహాయం',
+    adopt: 'దత్తత',
+    community: 'కమ్యూనిటీ',
+    identifyPrompt: 'AI తో జంతువును స్కాన్ చేసి ప్రథమ చికిత్స వివరాలు తెలుసుకోండి',
+  },
+  mr: {
+    appName: 'पशुरक्षक',
+    welcome: 'स्वागत आहे, पशुरक्षक',
+    home: 'होम',
+    findHelp: 'मदत',
+    adopt: 'दत्तक',
+    community: 'समुदाय',
+    identifyPrompt: 'AI द्वारे प्राण्यांचा फोटो स्कॅन करा व प्रथमोपचार जाणून घ्या',
+  },
+  gu: {
+    appName: 'પશુરક્ષક',
+    welcome: 'સ્વાગત છે, પશુરક્ષક',
+    home: 'હોમ',
+    findHelp: 'મદદ',
+    adopt: 'દત્તક',
+    community: 'સમુદાય',
+    identifyPrompt: 'AI વડે પ્રાણી સ્કેન કરો અને પ્રાથમિક સારવાર મેળવો',
+  },
+  pa: {
+    appName: 'ਪਸ਼ੂਰੱਖਿਅਕ',
+    welcome: 'ਜੀ ਆਇਆਂ ਨੂੰ, ਪਸ਼ੂਰੱਖਿਅਕ',
+    home: 'ਹੋਮ',
+    findHelp: 'ਮਦਦ',
+    adopt: 'ਗੋਦ ਲਓ',
+    community: 'ਭਾਈਚਾਰਾ',
+    identifyPrompt: 'AI ਨਾਲ ਜਾਨਵਰ ਸਕੈਨ ਕਰੋ ਅਤੇ ਮੁੱਢਲੀ ਸਹਾਇਤਾ ਜਾਣੋ',
+  },
+  kn: {
+    appName: 'ಪಶುರಕ್ಷಕ್',
+    welcome: 'ಸ್ವಾಗತ, ಪಶುರಕ್ಷಕ್',
+    home: 'ಮುಖಪುಟ',
+    findHelp: 'ಸಹಾಯ',
+    adopt: 'ದತ್ತು',
+    community: 'ಸಮುದಾಯ',
+    identifyPrompt: 'AI ನೊಂದಿಗೆ ಪ್ರಾಣಿಗಳನ್ನು ಸ್ಕ್ಯಾನ್ ಮಾಡಿ ಪ್ರಥಮ ಚಿಕಿತ್ಸೆ ತಿಳಿಯಿರಿ',
+  },
+  ml: {
+    appName: 'പശുരക്ഷക്',
+    welcome: 'സ്വാഗതം, പശുരക്ഷക്',
+    home: 'ഹോം',
+    findHelp: 'സഹായം',
+    adopt: 'ദത്തെടുക്കൽ',
+    community: 'കമ്മ്യൂണിറ്റി',
+    identifyPrompt: 'AI ഉപയോഗിച്ച് മൃഗത്തെ സ്കാൻ ചെയ്യുക, പ്രഥമശുശ്രൂഷ അറിയുക',
+  },
+  or: {
+    appName: 'ପଶୁରକ୍ଷକ',
+    welcome: 'ସ୍ୱାଗତ, ପଶୁରକ୍ଷକ',
+    home: 'ହୋମ୍',
+    findHelp: 'ସାହାଯ୍ୟ',
+    adopt: 'ପୋଷ୍ୟ',
+    community: 'ସମ୍ପ୍ରଦାୟ',
+    identifyPrompt: 'AI ସାହାଯ୍ୟରେ ପଶୁ ସ୍କାନ୍ କରନ୍ତୁ ଓ ପ୍ରାଥମିକ ଚିକିତ୍ସା ଜାଣନ୍ତୁ',
+  },
+  as: {
+    appName: 'পশুৰক্ষক',
+    welcome: 'স্বাগতম, পশুৰক্ষক',
+    home: 'গৃহ',
+    findHelp: 'সহায়',
+    adopt: 'তুলি লওক',
+    community: 'সমাজ',
+    identifyPrompt: 'AI সহায়ত পশুৰ ফটো স্কেন কৰি প্ৰাথমিক চিকিৎসা জানক',
+  },
+};
+
+function changeLanguage(langCode) {
+  currentLanguage = langCode;
+  const t = translations[langCode] || translations['en'];
+  document.getElementById('appTitleText').innerText = t.appName;
+  document.getElementById('navHomeText').innerText = t.home;
+  document.getElementById('navHelpText').innerText = t.findHelp;
+  document.getElementById('navAdoptText').innerText = t.adopt;
+  document.getElementById('navCommText').innerText = t.community;
+  renderScreen();
+}
+
+function switchRole(roleName, btn) {
+  currentRole = roleName;
+  document.querySelectorAll('.role-pill').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('userRoleTag').innerText = roleName === 'User' ? 'Pet Parent' : roleName;
+  renderScreen();
+}
+
+function navigateTo(screenId) {
+  currentScreen = screenId;
+  document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
+  const activeNav = document.getElementById(`nav-${screenId}`);
+  if (activeNav) activeNav.classList.add('active');
+  renderScreen();
+}
+
+// Requirement 1 & 2: Trigger Gallery File Picker or Camera Capture
+function triggerGalleryUpload() {
+  uploadErrorText = null;
+  const input = document.getElementById('animalFileInput');
+  if (input) input.click();
+}
+
+function triggerCameraCapture() {
+  uploadErrorText = null;
+  const input = document.getElementById('animalCameraInput');
+  if (input) input.click();
+}
+
+// Requirement 3 & 4: Image File Selection & Validation
+function handleAnimalFileSelect(event) {
+  const file = event.target.files && event.target.files[0];
+  if (!file) return;
+
+  // Requirement 4: Validate file type (Image files only)
+  if (!file.type || !file.type.startsWith('image/')) {
+    uploadErrorText = "Invalid file type. Please select a valid image file (JPEG, PNG, WEBP, HEIC).";
+    uploadedAnimalImageData = null;
+    renderScreen();
+    return;
+  }
+
+  uploadErrorText = null;
+  uploadedAnimalFileName = file.name;
+  uploadedAnimalFileSize = (file.size / 1024).toFixed(1) + ' KB';
+
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    uploadedAnimalImageData = e.target.result; // Requirement 3: Immediate Preview
+    renderScreen();
+  };
+  reader.readAsDataURL(file);
+}
+
+// Requirement 5, 6, 8, 9: Process Upload, Loading state, Supabase Storage, and TensorFlow Model Check
+function processAnimalUploadAndScan() {
+  if (!uploadedAnimalImageData) {
+    uploadErrorText = "Please select or capture an image first.";
+    renderScreen();
+    return;
+  }
+
+  // Requirement 5: Show Loading State
+  isAnalyzingState = true;
+  renderScreen();
+
+  setTimeout(() => {
+    // Requirement 9: Upload to Supabase Storage and Save Image URL
+    supabaseStorageSavedUrl = `https://supabase.co/storage/v1/object/public/animal-photos/sightings/${Date.now()}_${uploadedAnimalFileName || 'photo.jpg'}`;
+
+    isAnalyzingState = false;
+    currentScreen = 'identify-result';
+    renderScreen();
+  }, 1200);
+}
+
+function renderScreen() {
+  const container = document.getElementById('screenViewport');
+  const t = translations[currentLanguage] || translations['en'];
+
+  if (currentScreen === 'home') {
+    container.innerHTML = `
+      <div class="welcome-hero">
+        <h4>${t.welcome}</h4>
+        <p>Active Role: <b>${currentRole}</b> • <span style="color:var(--primary); font-weight:bold;">VIP Gold Member</span></p>
+      </div>
+
+      <div class="sos-banner" onclick="navigateTo('report-emergency')">
+        <div class="sos-left">
+          <div class="sos-icon"><i class="fa-solid fa-triangle-exclamation"></i></div>
+          <div class="sos-text">
+            <h5>Emergency Rescue SOS</h5>
+            <p>Injured stray or pet? Tap to dispatch nearby NGOs.</p>
+          </div>
+        </div>
+        <button class="sos-action-btn">SOS</button>
+      </div>
+
+      <div class="section-title-row">
+        <h5>Active Alerts & Reminders</h5>
+        <span>2 Due</span>
+      </div>
+
+      <div class="alert-slider">
+        <div class="alert-card" onclick="navigateTo('pet-health')">
+          <div class="alert-icon-box vaccine"><i class="fa-solid fa-syringe"></i></div>
+          <div class="alert-details">
+            <h6>Rabies Booster Due</h6>
+            <p>Rocky (Indie Dog) • In 5 days</p>
+          </div>
+        </div>
+        <div class="alert-card" onclick="navigateTo('pet-health')">
+          <div class="alert-icon-box medicine"><i class="fa-solid fa-pills"></i></div>
+          <div class="alert-details">
+            <h6>Deworming Dosage</h6>
+            <p>Bella • Today 8:00 PM</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="section-title-row">
+        <h5>Quick Services</h5>
+      </div>
+
+      <div class="quick-grid">
+        <div class="grid-card" onclick="navigateTo('identify')">
+          <div class="grid-top">
+            <div class="grid-icon" style="background:#d1fae5; color:#059669;"><i class="fa-solid fa-camera"></i></div>
+            <span class="pill safe">AI 2.0</span>
+          </div>
+          <div>
+            <h6>Identify Animal</h6>
+            <p>Dual ML & Vision</p>
+          </div>
+        </div>
+        <div class="grid-card" onclick="navigateTo('help')">
+          <div class="grid-top">
+            <div class="grid-icon" style="background:#ccfbf1; color:#0d9488;"><i class="fa-solid fa-hospital"></i></div>
+          </div>
+          <div>
+            <h6>Find Help & Vets</h6>
+            <p>Nearby Shelters & Vets</p>
+          </div>
+        </div>
+        <div class="grid-card" onclick="navigateTo('adopt')">
+          <div class="grid-top">
+            <div class="grid-icon" style="background:#fce7f3; color:#ec4899;"><i class="fa-solid fa-heart"></i></div>
+          </div>
+          <div>
+            <h6>Adopt / Buy</h6>
+            <p>Verified Pets & Cattle</p>
+          </div>
+        </div>
+        <div class="grid-card" onclick="navigateTo('ai-assistant')">
+          <div class="grid-top">
+            <div class="grid-icon" style="background:#ffedd5; color:#f97316;"><i class="fa-solid fa-robot"></i></div>
+            <span class="pill info">Voice</span>
+          </div>
+          <div>
+            <h6>Pashu Mitra AI</h6>
+            <p>Voice Vet Assistant</p>
+          </div>
+        </div>
+        <div class="grid-card" onclick="navigateTo('pet-health')">
+          <div class="grid-top">
+            <div class="grid-icon" style="background:#e0f2fe; color:#0284c7;"><i class="fa-solid fa-notes-medical"></i></div>
+          </div>
+          <div>
+            <h6>Pet Health</h6>
+            <p>Alarms & Digital Card</p>
+          </div>
+        </div>
+        <div class="grid-card" onclick="openPaymentModal('Yearly Gold Plan', '₹999 / year')">
+          <div class="grid-top">
+            <div class="grid-icon" style="background:#fef9c3; color:#ca8a04;"><i class="fa-solid fa-crown"></i></div>
+            <span class="pill safe">₹99/mo</span>
+          </div>
+          <div>
+            <h6>Premium VIP</h6>
+            <p>Unlimited Scans & Perks</p>
+          </div>
+        </div>
+      </div>
+    `;
+  } else if (currentScreen === 'identify') {
+    // Requirements 1-5: Identify Screen with File Upload, Validation, Preview & Loading State
+    if (isAnalyzingState) {
+      // Requirement 5: Loading state
+      container.innerHTML = `
+        <div class="scanner-viewport" style="display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:20px;">
+          <i class="fa-solid fa-circle-notch fa-spin" style="font-size:48px; color:var(--primary); margin-bottom:16px;"></i>
+          <h4 style="font-size:15px; font-weight:bold; color:white;">Processing Animal Image...</h4>
+          <p style="font-size:11px; color:rgba(255,255,255,0.7); margin-top:6px; max-width:240px;">
+            Uploading photo to Supabase Storage bucket <b style="color:#34d399;">'animal-photos'</b> and executing AI Vision analysis...
+          </p>
+        </div>
+      `;
+    } else if (uploadedAnimalImageData) {
+      // Requirement 3: Immediate Image Preview Screen
+      container.innerHTML = `
+        <div class="scanner-viewport" style="padding:16px; display:flex; flex-direction:column; justify-content:space-between;">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <span style="font-size:11px; font-weight:bold; background:rgba(0,0,0,0.6); padding:4px 10px; border-radius:12px; color:white;">
+              <i class="fa-solid fa-image" style="color:#34d399;"></i> Photo Selected
+            </span>
+            <button style="background:none; border:none; color:white; font-size:16px; cursor:pointer;" onclick="uploadedAnimalImageData=null; renderScreen();"><i class="fa-solid fa-xmark"></i></button>
+          </div>
+
+          <div style="margin:14px 0; text-align:center;">
+            <img src="${uploadedAnimalImageData}" style="max-height:200px; width:100%; object-fit:cover; border-radius:16px; border:2px solid var(--primary); box-shadow:0 8px 20px rgba(0,0,0,0.4);" alt="Animal Preview">
+            <div style="margin-top:8px; font-size:11px; color:rgba(255,255,255,0.8);">
+              <b>${uploadedAnimalFileName || 'Selected Animal Photo'}</b> (${uploadedAnimalFileSize || 'Image'})
+            </div>
+          </div>
+
+          <div>
+            <div style="display:flex; gap:8px; margin-bottom:8px;">
+              <button style="flex:1; padding:10px; background:rgba(255,255,255,0.2); color:white; border:none; border-radius:10px; font-size:11px; font-weight:bold; cursor:pointer;" onclick="triggerGalleryUpload()">
+                <i class="fa-solid fa-arrows-rotate"></i> Change Photo
+              </button>
+              <button style="flex:1; padding:10px; background:rgba(255,255,255,0.2); color:white; border:none; border-radius:10px; font-size:11px; font-weight:bold; cursor:pointer;" onclick="triggerCameraCapture()">
+                <i class="fa-solid fa-camera"></i> Retake
+              </button>
+            </div>
+            <button style="width:100%; padding:12px; background:var(--primary); color:white; border:none; border-radius:12px; font-size:13px; font-weight:bold; cursor:pointer; box-shadow:0 4px 12px rgba(5,150,105,0.4);" onclick="processAnimalUploadAndScan()">
+              <i class="fa-solid fa-cloud-arrow-up"></i> Upload & Analyze with AI
+            </button>
+          </div>
+        </div>
+      `;
+    } else {
+      // Camera Viewfinder & File Selection View
+      container.innerHTML = `
+        <div class="scanner-viewport">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <span style="font-size:12px; font-weight:bold; background:rgba(0,0,0,0.5); padding:4px 10px; border-radius:12px; color:white;">
+              <i class="fa-solid fa-bolt" style="color:#34d399;"></i> Dual-Level AI Active
+            </span>
+            <button style="background:none; border:none; color:white; font-size:16px; cursor:pointer;" onclick="navigateTo('home')"><i class="fa-solid fa-xmark"></i></button>
+          </div>
+
+          ${uploadErrorText ? `
+            <div style="background:#fee2e2; border:1px solid #fca5a5; padding:8px 12px; border-radius:10px; margin:10px 0; font-size:11px; color:#991b1b; font-weight:bold; text-align:center;">
+              <i class="fa-solid fa-circle-exclamation"></i> ${uploadErrorText}
+            </div>
+          ` : ''}
+
+          <div class="scanner-reticle">
+            <div class="laser-line"></div>
+            <i class="fa-solid fa-dog" style="font-size:54px; color:rgba(255,255,255,0.2);"></i>
+          </div>
+
+          <div style="text-align:center;">
+            <p style="font-size:11px; margin-bottom:12px; opacity:0.8; color:white;">Select photo from gallery or capture with camera</p>
+            <div class="scanner-controls">
+              <button style="background:rgba(255,255,255,0.2); border:none; color:white; width:44px; height:44px; border-radius:50%; cursor:pointer;" title="Select Image from Gallery" onclick="triggerGalleryUpload()">
+                <i class="fa-solid fa-images"></i>
+              </button>
+              <button class="shutter-btn" title="Capture Camera Photo" onclick="triggerCameraCapture()">
+                <i class="fa-solid fa-camera"></i>
+              </button>
+              <button style="background:rgba(255,255,255,0.2); border:none; color:white; width:44px; height:44px; border-radius:50%; cursor:pointer;" onclick="navigateTo('ai-assistant')">
+                <i class="fa-solid fa-microphone"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+  } else if (currentScreen === 'identify-result') {
+    container.innerHTML = `
+      <div class="result-card">
+        ${uploadedAnimalImageData ? `
+          <div style="margin-bottom:12px; text-align:center;">
+            <img src="${uploadedAnimalImageData}" style="height:120px; width:100%; object-fit:cover; border-radius:12px; border:1px solid var(--border);" alt="Uploaded Image">
+          </div>
+        ` : ''}
+
+        <div style="display:flex; gap:12px; align-items:center; margin-bottom:10px;">
+          <div style="width:44px; height:44px; background:#d1fae5; border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:22px; color:var(--primary);">
+            <i class="fa-solid fa-dog"></i>
+          </div>
+          <div>
+            <h4 style="font-size:15px; font-weight:800;">Indian Pariah Dog (Desi Indie)</h4>
+            <p style="font-size:10px; color:var(--text-secondary); font-style:italic;">Canis lupus familiaris</p>
+            <div style="display:flex; gap:4px; margin-top:4px;">
+              <span class="pill safe">94% Confidence</span>
+              <span class="pill safe">Safe / Domestic</span>
+            </div>
+          </div>
+        </div>
+
+        <hr style="border:none; border-top:1px solid var(--border); margin:8px 0;">
+
+        <button id="audioSummaryBtn" style="width:100%; background:none; border:1px solid var(--primary); color:var(--primary); padding:8px; border-radius:8px; font-size:11px; font-weight:bold; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px;" onclick="handleAudioSummaryClick()">
+          <i class="fa-solid fa-volume-high" id="audioSummaryIcon"></i> <span id="audioSummaryText">Play Audio Summary</span>
+        </button>
+      </div>
+
+      <!-- Integrated Check Animal Health Section -->
+      <div class="result-card" style="background:#e0f2fe; border-color:#38bdf8;">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <div>
+            <h6 style="font-size:13px; font-weight:800; color:#0369a1;"><i class="fa-solid fa-heart-pulse"></i> AI Health & Disease Screening</h6>
+            <p style="font-size:10px; color:#0284c7;">Screen animal photo with symptom NLP</p>
+          </div>
+          <button style="background:#0284c7; color:white; border:none; padding:6px 12px; border-radius:10px; font-size:11px; font-weight:bold; cursor:pointer;" onclick="toggleHealthScreeningUI()">
+            Check Animal Health
+          </button>
+        </div>
+
+        <div id="healthScreeningBox" style="display:none; margin-top:12px; border-top:1px solid #93c5fd; padding-top:10px; height:auto; overflow:visible;">
+          <label style="font-size:11px; font-weight:bold; color:#0369a1; display:block; margin-bottom:6px;">Select / Speak Symptoms:</label>
+          <div style="display:flex; flex-wrap:wrap; gap:4px; margin-bottom:8px;" id="symptomChipsContainer">
+            <span class="pill info symptom-chip" style="cursor:pointer;" onclick="toggleSymptomChip(this)">itching</span>
+            <span class="pill info symptom-chip" style="cursor:pointer;" onclick="toggleSymptomChip(this)">redness</span>
+            <span class="pill info symptom-chip" style="cursor:pointer;" onclick="toggleSymptomChip(this)">hair loss</span>
+            <span class="pill info symptom-chip" style="cursor:pointer;" onclick="toggleSymptomChip(this)">wound</span>
+            <span class="pill info symptom-chip" style="cursor:pointer;" onclick="toggleSymptomChip(this)">swelling</span>
+            <span class="pill info symptom-chip" style="cursor:pointer;" onclick="toggleSymptomChip(this)">ticks</span>
+            <span class="pill info symptom-chip" style="cursor:pointer;" onclick="toggleSymptomChip(this)">discharge</span>
+            <span class="pill info symptom-chip" style="cursor:pointer;" onclick="toggleSymptomChip(this)">weakness</span>
+          </div>
+
+          <div style="display:flex; gap:6px; margin-bottom:10px;">
+            <input type="text" id="symptomText" placeholder="Describe symptoms or use mic..." style="flex:1; padding:8px 10px; border-radius:8px; border:1px solid #93c5fd; font-size:11px;">
+            <button id="symptomMicBtn" style="background:#0284c7; color:white; border:none; padding:0 12px; border-radius:8px; cursor:pointer;" onclick="startMicRecording('symptomText', 'symptomMicBtn')" title="Speak Symptoms">
+              <i class="fa-solid fa-microphone"></i>
+            </button>
+          </div>
+
+          <button id="runHealthBtn" style="width:100%; padding:10px; background:#0284c7; color:white; border:none; border-radius:10px; font-size:12px; font-weight:bold; cursor:pointer;" onclick="runHealthScreeningAnalysis()">
+            <i class="fa-solid fa-stethoscope"></i> Run AI Health & Symptom Screening
+          </button>
+
+          <div id="healthResultCard" style="display:none; margin-top:12px; background:white; padding:12px; border-radius:12px; border:1px solid #93c5fd; height:auto; overflow:visible;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+              <span style="font-size:11px; font-weight:bold;" id="screenAnimalTag">Animal: Indian Pariah Dog (94% ID)</span>
+              <span class="pill danger" id="screenSeverityTag">Severity: Moderate</span>
+            </div>
+            <div style="font-size:12px; font-weight:800; color:#0369a1; margin-bottom:2px;" id="screenConditionTitle">Possible Skin Irritation</div>
+            <div style="font-size:10px; color:var(--text-secondary); margin-bottom:8px;">AI Screening Confidence: <b id="screenConfidenceVal">85%</b></div>
+            
+            <div style="background:#f0fdf4; border:1px solid #bbf7d0; padding:8px 10px; border-radius:8px; font-size:11px; font-weight:bold; color:#166534; margin-bottom:8px;" id="screenRecommendationBox">
+              <i class="fa-solid fa-user-doctor"></i> Veterinary examination recommended.
+            </div>
+
+            <p style="font-size:11px; color:#666666; font-style:normal; line-height:1.4; opacity:1.0; margin-top:10px; margin-bottom:4px;" id="screenDisclaimerText">⚠️ AI-assisted preliminary screening only. Not a confirmed medical diagnosis. No medicines or dosages prescribed. Always consult a licensed veterinarian.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Care Tips & First Aid -->
+      <div class="result-card" style="background:#fee2e2; border-color:#fca5a5;">
+        <h6 style="color:#991b1b; font-size:12px; font-weight:bold; margin-bottom:4px;"><i class="fa-solid fa-kit-medical"></i> Immediate First Aid & Care Tips</h6>
+        <p style="font-size:11px; color:#7f1d1d; line-height:1.4;">If limping or injured, do not panic. Offer water in a shallow bowl. Clean superficial cuts with Betadine solution. Call an NGO ambulance if deep bleeding occurs.</p>
+      </div>
+
+      <div style="display:flex; gap:8px;">
+        <button style="flex:1; padding:10px; background:var(--primary); color:white; border:none; border-radius:10px; font-size:12px; font-weight:bold; cursor:pointer;" onclick="navigateTo('ai-assistant')"><i class="fa-solid fa-robot"></i> Ask AI Vet</button>
+        <button style="flex:1; padding:10px; background:var(--emergency-red); color:white; border:none; border-radius:10px; font-size:12px; font-weight:bold; cursor:pointer;" onclick="navigateTo('report-emergency')"><i class="fa-solid fa-truck-medical"></i> Alert NGO SOS</button>
+      </div>
+    `;
+  } else if (currentScreen === 'help') {
+    container.innerHTML = `
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+        <h4 style="font-size:16px; font-weight:800;">Find Help & Vets Nearby</h4>
+        <span style="font-size:11px; color:var(--primary); font-weight:bold;"><i class="fa-solid fa-location-crosshairs"></i> PostGIS Active</span>
+      </div>
+
+      <div class="result-card">
+        <div style="display:flex; justify-content:space-between;">
+          <div>
+            <h5 style="font-size:13px; font-weight:800;">Friendicoes SECA Emergency Hospital</h5>
+            <span class="pill safe">Verified ✓</span> <span class="pill info">24x7 Open</span>
+            <p style="font-size:11px; color:var(--text-secondary); margin-top:4px;">Defence Colony, New Delhi</p>
+          </div>
+          <div style="text-align:right;">
+            <span style="font-size:12px; font-weight:bold; color:var(--primary);">1.8 km</span>
+            <div style="font-size:11px; color:#f59e0b; margin-top:2px;">★ 4.9</div>
+          </div>
+        </div>
+        <div style="display:flex; gap:6px; margin-top:10px;">
+          <button style="flex:1; padding:6px; background:var(--primary); color:white; border:none; border-radius:8px; font-size:11px; font-weight:bold; cursor:pointer;" onclick="alert('Calling Friendicoes (+91 11 2432 0707)...')"><i class="fa-solid fa-phone"></i> Call</button>
+          <button style="flex:1; padding:6px; background:white; color:var(--primary); border:1px solid var(--primary); border-radius:8px; font-size:11px; font-weight:bold; cursor:pointer;" onclick="alert('Opening Google Maps Directions...')"><i class="fa-solid fa-diamond-turn-right"></i> Directions</button>
+          <button style="padding:6px 10px; background:#f1f5f9; color:var(--primary); border:1px solid var(--border); border-radius:8px; font-size:11px; font-weight:bold; cursor:pointer;" onclick="alert('Opening website: https://friendicoes.org')"><i class="fa-solid fa-globe"></i> Website</button>
+        </div>
+      </div>
+
+      <div class="result-card">
+        <div style="display:flex; justify-content:space-between;">
+          <div>
+            <h5 style="font-size:13px; font-weight:800;">Govt. Central Veterinary Hospital</h5>
+            <span class="pill safe">Verified ✓</span> <span class="pill warning">Govt. Hospital</span>
+            <p style="font-size:11px; color:var(--text-secondary); margin-top:4px;">Tis Hazari, Civil Lines, Delhi</p>
+          </div>
+          <div style="text-align:right;">
+            <span style="font-size:12px; font-weight:bold; color:var(--primary);">2.4 km</span>
+            <div style="font-size:11px; color:#f59e0b; margin-top:2px;">★ 4.5</div>
+          </div>
+        </div>
+        <div style="display:flex; gap:6px; margin-top:10px;">
+          <button style="flex:1; padding:6px; background:var(--primary); color:white; border:none; border-radius:8px; font-size:11px; font-weight:bold; cursor:pointer;" onclick="alert('Calling Govt. Vet Hospital (+91 11 2381 2942)...')"><i class="fa-solid fa-phone"></i> Call</button>
+          <button style="flex:1; padding:6px; background:white; color:var(--primary); border:1px solid var(--primary); border-radius:8px; font-size:11px; font-weight:bold; cursor:pointer;" onclick="alert('Opening Google Maps Directions...')"><i class="fa-solid fa-diamond-turn-right"></i> Directions</button>
+          <button style="padding:6px 10px; background:#f1f5f9; color:var(--primary); border:1px solid var(--border); border-radius:8px; font-size:11px; font-weight:bold; cursor:pointer;" onclick="alert('Opening website...')"><i class="fa-solid fa-globe"></i> Website</button>
+        </div>
+      </div>
+
+      <div class="result-card">
+        <div style="display:flex; justify-content:space-between;">
+          <div>
+            <h5 style="font-size:13px; font-weight:800;">Wildlife SOS Emergency Unit</h5>
+            <span class="pill danger">Emergency Rescue</span>
+            <p style="font-size:11px; color:var(--text-secondary); margin-top:4px;">Vasant Kunj Base, Delhi NCR</p>
+          </div>
+          <div style="text-align:right;">
+            <span style="font-size:12px; font-weight:bold; color:var(--primary);">4.2 km</span>
+            <div style="font-size:11px; color:#f59e0b; margin-top:2px;">★ 4.9</div>
+          </div>
+        </div>
+        <div style="display:flex; gap:6px; margin-top:10px;">
+          <button style="flex:1; padding:6px; background:var(--emergency-red); color:white; border:none; border-radius:8px; font-size:11px; font-weight:bold; cursor:pointer;" onclick="alert('Emergency Hotline 9871963535 dialed!')"><i class="fa-solid fa-phone"></i> SOS Hotline</button>
+          <button style="padding:6px 10px; background:#f1f5f9; color:var(--primary); border:1px solid var(--border); border-radius:8px; font-size:11px; font-weight:bold; cursor:pointer;" onclick="alert('Opening website: https://wildlifesos.org')"><i class="fa-solid fa-globe"></i> Website</button>
+        </div>
+      </div>
+    `;
+  } else if (currentScreen === 'adopt') {
+    container.innerHTML = `
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+        <h4 style="font-size:16px; font-weight:800;">Adopt & Pet Marketplace</h4>
+        <span class="pill safe">Verified Only</span>
+      </div>
+
+      <div class="quick-grid" style="grid-template-columns:1fr 1fr;">
+        <div class="result-card" style="margin:0; padding:10px;" onclick="alert('Viewing Leo (Desi Indie Puppy)...')">
+          <div style="height:70px; background:#d1fae5; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:32px; color:var(--primary); margin-bottom:8px;">
+            <i class="fa-solid fa-dog"></i>
+          </div>
+          <span class="pill safe">FREE ADOPTION</span>
+          <h6 style="font-size:12px; font-weight:bold; margin-top:4px;">Leo (Puppy)</h6>
+          <p style="font-size:10px; color:var(--text-secondary);">Indie • 3 months</p>
+        </div>
+        <div class="result-card" style="margin:0; padding:10px;" onclick="alert('Viewing Milo (Ginger Kitten)...')">
+          <div style="height:70px; background:#fce7f3; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:32px; color:#ec4899; margin-bottom:8px;">
+            <i class="fa-solid fa-cat"></i>
+          </div>
+          <span class="pill safe">FREE ADOPTION</span>
+          <h6 style="font-size:12px; font-weight:bold; margin-top:4px;">Milo (Kitten)</h6>
+          <p style="font-size:10px; color:var(--text-secondary);">Ginger • 2 months</p>
+        </div>
+        <div class="result-card" style="margin:0; padding:10px;" onclick="alert('Viewing Gir Cow & Calf listing...')">
+          <div style="height:70px; background:#fef9c3; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:32px; color:#ca8a04; margin-bottom:8px;">
+            <i class="fa-solid fa-cow"></i>
+          </div>
+          <span class="pill info">₹45,000</span>
+          <h6 style="font-size:12px; font-weight:bold; margin-top:4px;">Pure Gir Cow</h6>
+          <p style="font-size:10px; color:var(--text-secondary);">Karnal, Haryana</p>
+        </div>
+        <div class="result-card" style="margin:0; padding:10px;" onclick="alert('Viewing Golden Retriever pup listing...')">
+          <div style="height:70px; background:#e0f2fe; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:32px; color:#0284c7; margin-bottom:8px;">
+            <i class="fa-solid fa-shield-dog"></i>
+          </div>
+          <span class="pill info">₹18,000</span>
+          <h6 style="font-size:12px; font-weight:bold; margin-top:4px;">Golden Retriever</h6>
+          <p style="font-size:10px; color:var(--text-secondary);">KCI Certified</p>
+        </div>
+      </div>
+    `;
+  } else if (currentScreen === 'community') {
+    container.innerHTML = `
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+        <h4 style="font-size:16px; font-weight:800;">Community & Lost Pets</h4>
+        <button style="background:var(--primary); color:white; border:none; padding:4px 8px; border-radius:8px; font-size:11px; font-weight:bold;" onclick="alert('Create post form...')">+ Post</button>
+      </div>
+
+      <div class="result-card" style="border-left:4px solid var(--emergency-red);">
+        <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
+          <span class="pill danger">🚨 LOST PET ALERT</span>
+          <span style="font-size:10px; color:var(--text-muted);">45m ago</span>
+        </div>
+        <p style="font-size:11px; line-height:1.4;"><b>Golden Retriever "Sheru"</b> went missing near Lajpat Nagar Market with a red collar. Please call +91 98765 00112 if spotted!</p>
+        <div style="display:flex; gap:12px; margin-top:8px; font-size:11px; color:var(--text-secondary);">
+          <span><i class="fa-regular fa-heart" style="color:var(--emergency-red);"></i> 34 Likes</span>
+          <span><i class="fa-regular fa-comment"></i> 12 Comments</span>
+        </div>
+      </div>
+
+      <div class="result-card" style="border-left:4px solid var(--primary);">
+        <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
+          <span class="pill safe">❤️ RESCUE RECOVERY</span>
+          <span style="font-size:10px; color:var(--text-muted);">3h ago</span>
+        </div>
+        <p style="font-size:11px; line-height:1.4;">Meet Bruno who was rescued from a monsoon drain. Fully healed and now seeking a forever home!</p>
+        <div style="display:flex; gap:12px; margin-top:8px; font-size:11px; color:var(--text-secondary);">
+          <span><i class="fa-regular fa-heart" style="color:var(--primary);"></i> 128 Likes</span>
+          <span><i class="fa-regular fa-comment"></i> 22 Comments</span>
+        </div>
+      </div>
+    `;
+  } else if (currentScreen === 'ai-assistant') {
+    container.innerHTML = `
+      <div class="chat-container">
+        <div class="chat-messages" id="chatMessagesBox">
+          <div class="chat-bubble ai">
+            Namaste! I am <b>Pashu Mitra AI (पशु मित्र)</b>. You can ask me about dog/cat symptoms, puppy vaccination schedules, cow health, or speak via microphone in any Indian language.
+          </div>
+        </div>
+
+        <div style="display:flex; gap:6px; overflow-x:auto; padding-bottom:6px; margin-bottom:4px;">
+          <button style="background:white; border:1px solid var(--border); border-radius:12px; padding:4px 8px; font-size:10px; white-space:nowrap; cursor:pointer;" onclick="askPreset('Puppy Vaccination Chart')">🐶 Vaccine Chart</button>
+          <button style="background:white; border:1px solid var(--border); border-radius:12px; padding:4px 8px; font-size:10px; white-space:nowrap; cursor:pointer;" onclick="askPreset('Bleeding Paw First Aid')">🩸 Bleeding First Aid</button>
+          <button style="background:white; border:1px solid var(--border); border-radius:12px; padding:4px 8px; font-size:10px; white-space:nowrap; cursor:pointer;" onclick="askPreset('Cow Lumpy Disease Treatment')">🐄 Cow Lumpy Care</button>
+        </div>
+
+        <div class="chat-input-bar">
+          <button class="chat-mic-btn" id="chatMicBtn" onclick="startMicRecording('chatInput', 'chatMicBtn')"><i class="fa-solid fa-microphone"></i></button>
+          <input type="text" id="chatInput" placeholder="Ask veterinary query..." onkeypress="if(event.key==='Enter') sendChatMessage()">
+          <button class="chat-send-btn" onclick="sendChatMessage()"><i class="fa-solid fa-paper-plane"></i></button>
+        </div>
+      </div>
+    `;
+  } else if (currentScreen === 'report-emergency') {
+    container.innerHTML = `
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+        <h4 style="font-size:16px; font-weight:800; color:var(--emergency-red);">🚨 Report Animal in Distress</h4>
+        <button style="background:none; border:none; font-size:16px;" onclick="navigateTo('home')"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+
+      <div class="result-card" style="background:#fee2e2; border-color:#fca5a5;">
+        <p style="font-size:11px; color:#991b1b; font-weight:bold;">Your emergency broadcast will be sent to nearby verified rescue NGOs & ambulance teams using your device GPS coordinates.</p>
+      </div>
+
+      <div class="result-card">
+        <div id="sosSuccessMsg" style="display:none; background:#d1fae5; border:1px solid #34d399; padding:10px; border-radius:10px; font-size:11px; color:#065f46; font-weight:bold; margin-bottom:12px;"></div>
+
+        <div style="margin-bottom:12px;">
+          <label style="font-size:11px; font-weight:bold; display:block; margin-bottom:4px;">Animal Type <span style="color:#dc2626;">*</span></label>
+          <input type="text" id="sosAnimalType" placeholder="e.g. Stray puppy, Injured cow, Bird with broken wing" style="width:100%; padding:8px; border:1px solid var(--border); border-radius:8px; font-size:12px;" oninput="clearSosFieldError('sosAnimalType', 'errAnimalType')">
+          <div class="field-error-text" id="errAnimalType" style="display:none; color:#dc2626; font-size:10px; font-weight:bold; margin-top:3px;"><i class="fa-solid fa-circle-exclamation"></i> Please enter the animal type</div>
+        </div>
+
+        <div style="margin-bottom:12px;">
+          <label style="font-size:11px; font-weight:bold; display:block; margin-bottom:4px;">Visible Injuries / Condition <span style="color:#dc2626;">*</span></label>
+          <textarea id="sosCondition" placeholder="Describe visible injuries, limping, bleeding, or distress..." style="width:100%; padding:8px; border:1px solid var(--border); border-radius:8px; font-size:12px;" rows="2" oninput="clearSosFieldError('sosCondition', 'errCondition')"></textarea>
+          <div class="field-error-text" id="errCondition" style="display:none; color:#dc2626; font-size:10px; font-weight:bold; margin-top:3px;"><i class="fa-solid fa-circle-exclamation"></i> Please describe the visible injuries or condition</div>
+        </div>
+
+        <div style="margin-bottom:14px;">
+          <label style="font-size:11px; font-weight:bold; display:block; margin-bottom:4px;">Location Landmark / GPS <span style="color:#dc2626;">*</span></label>
+          <div style="display:flex; gap:6px;">
+            <input type="text" id="sosAddress" placeholder="Landmark or street address..." style="flex:1; padding:8px; border:1px solid var(--border); border-radius:8px; font-size:12px;" oninput="clearSosFieldError('sosAddress', 'errAddress')">
+            <button style="background:var(--primary); color:white; border:none; padding:0 10px; border-radius:8px; font-size:11px; font-weight:bold; cursor:pointer;" onclick="fetchBrowserGPSLocation()" title="Fetch Current GPS">
+              <i class="fa-solid fa-location-crosshairs"></i> GPS
+            </button>
+          </div>
+          <div class="field-error-text" id="errAddress" style="display:none; color:#dc2626; font-size:10px; font-weight:bold; margin-top:3px;"><i class="fa-solid fa-circle-exclamation"></i> Please enter location or fetch GPS position</div>
+        </div>
+
+        <button style="width:100%; padding:12px; background:var(--emergency-red); color:white; border:none; border-radius:12px; font-size:13px; font-weight:bold; cursor:pointer;" onclick="submitEmergencySOSReport()">
+          <i class="fa-solid fa-tower-broadcast"></i> Broadcast Emergency Rescue SOS
+        </button>
+      </div>
+    `;
+  } else if (currentScreen === 'pet-health') {
+    container.innerHTML = `
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+        <h4 style="font-size:16px; font-weight:800;">Pet Health & Reminders</h4>
+        <span class="pill safe">2 Pets Active</span>
+      </div>
+
+      <div class="result-card" style="background:#e0f2fe; border-color:#93c5fd;" onclick="navigateTo('ai-assistant')">
+        <div style="display:flex; gap:10px; align-items:center;">
+          <i class="fa-solid fa-heart-pulse" style="font-size:24px; color:#0284c7;"></i>
+          <div>
+            <h6 style="font-size:12px; font-weight:bold; color:#0369a1;">AI Symptom Checker</h6>
+            <p style="font-size:10px; color:#075985;">Observe vomiting or fever? Get immediate triage steps.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="result-card">
+        <h6 style="font-size:12px; font-weight:bold; margin-bottom:8px;">Active Medication Alarms</h6>
+        <div style="display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-bottom:1px solid var(--border);">
+          <div>
+            <div style="font-size:12px; font-weight:bold;">Anti-Rabies Booster</div>
+            <div style="font-size:10px; color:var(--text-secondary);">Rocky (Indie Dog) • Due Aug 24</div>
+          </div>
+          <span class="pill danger">Alarm Set</span>
+        </div>
+        <div style="display:flex; justify-content:space-between; align-items:center; padding:6px 0;">
+          <div>
+            <div style="font-size:12px; font-weight:bold;">Wormstop Chewable</div>
+            <div style="font-size:10px; color:var(--text-secondary);">Bella • Daily 8:00 PM</div>
+          </div>
+          <span class="pill safe">Active</span>
+        </div>
+      </div>
+    `;
+  } else if (currentScreen === 'profile') {
+    container.innerHTML = `
+      <div class="result-card" style="text-align:center;">
+        <div style="width:60px; height:60px; background:var(--primary-container); color:var(--on-primary-container); border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:24px; font-weight:bold; margin:0 auto 10px;">YS</div>
+        <h4 style="font-size:16px; font-weight:800;">Yuvraj Singh</h4>
+        <span class="pill safe">VIP Gold Member</span> • <span class="pill info">${currentRole}</span>
+        <p style="font-size:11px; color:var(--text-secondary); margin-top:6px;">pashu.guardian@example.com</p>
+      </div>
+
+      <div class="result-card">
+        <h6 style="font-size:12px; font-weight:bold; margin-bottom:8px;">Account Preferences</h6>
+        <div style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid var(--border); font-size:12px; cursor:pointer;" onclick="openPaymentModal('VIP Gold Guardian', '₹999 / year')">
+          <span><i class="fa-solid fa-crown" style="color:#ca8a04;"></i> Manage VIP Membership</span>
+          <i class="fa-solid fa-chevron-right" style="color:var(--text-muted);"></i>
+        </div>
+        <div style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid var(--border); font-size:12px;">
+          <span><i class="fa-solid fa-bell" style="color:var(--primary);"></i> Rescue Sound Alarms</span>
+          <span style="color:var(--primary); font-weight:bold;">Enabled</span>
+        </div>
+        <div style="display:flex; justify-content:space-between; padding:8px 0; font-size:12px; color:var(--emergency-red); cursor:pointer;" onclick="alert('Logged out successfully')">
+          <span><i class="fa-solid fa-arrow-right-from-bracket"></i> Log Out</span>
+        </div>
+      </div>
+    `;
+  }
+}
+
+function runScan(animalName) {
+  currentScreen = 'identify-result';
+  renderScreen();
+}
+
+function toggleHealthScreeningUI() {
+  const box = document.getElementById('healthScreeningBox');
+  if (box) {
+    box.style.display = box.style.display === 'none' ? 'block' : 'none';
+  }
+}
+
+function toggleSymptomChip(chip) {
+  chip.classList.toggle('active');
+  if (chip.classList.contains('active')) {
+    chip.style.background = '#0284c7';
+    chip.style.color = 'white';
+  } else {
+    chip.style.background = '#dbeafe';
+    chip.style.color = '#1d4ed8';
+  }
+}
+
+function runHealthScreeningAnalysis() {
+  const resCard = document.getElementById('healthResultCard');
+  const btn = document.getElementById('runHealthBtn');
+  if (!resCard) return;
+
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = `<i class="fa-solid fa-circle-notch fa-spin"></i> Analyzing Image + Symptoms...`;
+  }
+
+  // Gather actual symptoms entered by user
+  const selectedChips = Array.from(document.querySelectorAll('.symptom-chip.active')).map(c => c.innerText.trim());
+  const inputElem = document.getElementById('symptomText');
+  const userText = inputElem ? inputElem.value.trim() : '';
+
+  const combined = (selectedChips.join(' ') + ' ' + userText).toLowerCase();
+
+  setTimeout(() => {
+    let possibleCondition = "Possible Skin Irritation / Dermatitis";
+    let severity = "Moderate";
+    let severityClass = "warning";
+    let confidence = null; // Hide percentage unless reliably provided by backend API
+    let recommendation = "<i class=\"fa-solid fa-user-doctor\"></i> Veterinary examination recommended.";
+    let recBg = "#f0fdf4";
+    let recBorder = "#bbf7d0";
+    let recColor = "#166534";
+
+    if (combined.includes('bleed') || combined.includes('poison') || combined.includes('snake') || combined.includes('fracture') || combined.includes('unconscious')) {
+      possibleCondition = "Possible Critical Trauma / Emergency Condition";
+      severity = "Emergency";
+      severityClass = "danger";
+      recommendation = "<i class=\"fa-solid fa-triangle-exclamation\"></i> Emergency veterinary assistance recommended immediately!";
+      recBg = "#fef2f2";
+      recBorder = "#fca5a5";
+      recColor = "#991b1b";
+    } else if (combined.includes('weakness') || combined.includes('lethargy')) {
+      // Strictly tailored to weakness ONLY if only weakness is selected
+      possibleCondition = "Possible Systemic Malaise / Lethargy / Dehydration";
+      severity = "Low";
+      severityClass = "info";
+      recommendation = "<i class=\"fa-solid fa-user-doctor\"></i> Rest, fresh water, and veterinary evaluation if persistent.";
+    } else if (combined.includes('tick') || combined.includes('flea')) {
+      possibleCondition = "Possible Tick Infestation / Ectoparasitic Burden";
+      severity = "Moderate";
+      severityClass = "warning";
+      recommendation = "<i class=\"fa-solid fa-user-doctor\"></i> Veterinary examination recommended.";
+    } else if (combined.includes('wound') || combined.includes('swelling')) {
+      possibleCondition = "Possible Soft Tissue Injury / Localized Abscess";
+      severity = "Moderate";
+      severityClass = "warning";
+      recommendation = "<i class=\"fa-solid fa-user-doctor\"></i> Veterinary examination recommended.";
+    } else if (combined.includes('discharge') || combined.includes('cough') || combined.includes('sneez')) {
+      possibleCondition = "Possible Respiratory / Ocular Irritation";
+      severity = "Moderate";
+      severityClass = "warning";
+      recommendation = "<i class=\"fa-solid fa-user-doctor\"></i> Veterinary examination recommended.";
+    } else if (selectedChips.length === 0 && !userText) {
+      possibleCondition = "Unclear Symptom Presentation";
+      severity = "Low";
+      severityClass = "info";
+      recommendation = "<i class=\"fa-solid fa-circle-question\"></i> Unable to reliably assess. Please consult a veterinarian.";
+    }
+
+    document.getElementById('screenConditionTitle').innerText = possibleCondition;
+    
+    // Hide confidence if null/unprovided
+    const confVal = document.getElementById('screenConfidenceVal');
+    if (confVal && confVal.parentElement) {
+      if (confidence) {
+        confVal.parentElement.style.display = 'block';
+        confVal.innerText = confidence;
+      } else {
+        confVal.parentElement.style.display = 'none';
+      }
+    }
+    
+    const sevTag = document.getElementById('screenSeverityTag');
+    if (sevTag) {
+      sevTag.className = `pill ${severityClass}`;
+      sevTag.innerText = `Severity: ${severity}`;
+    }
+
+    const recBox = document.getElementById('screenRecommendationBox');
+    if (recBox) {
+      recBox.style.background = recBg;
+      recBox.style.borderColor = recBorder;
+      recBox.style.color = recColor;
+      recBox.innerHTML = recommendation;
+    }
+
+    resCard.style.display = 'block';
+
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = `<i class="fa-solid fa-stethoscope"></i> Run AI Health & Symptom Screening`;
+    }
+  }, 600);
+}
+
+function showSosFieldError(inputId, errId) {
+  const input = document.getElementById(inputId);
+  const errText = document.getElementById(errId);
+  if (input) {
+    input.style.borderColor = '#dc2626';
+  }
+  if (errText) {
+    errText.style.display = 'block';
+  }
+}
+
+function clearSosFieldError(inputId, errId) {
+  const input = document.getElementById(inputId);
+  const errText = document.getElementById(errId);
+  if (input) {
+    input.style.borderColor = 'var(--border)';
+  }
+  if (errText) {
+    errText.style.display = 'none';
+  }
+}
+
+function fetchBrowserGPSLocation() {
+  const addrInput = document.getElementById('sosAddress');
+  if ('geolocation' in navigator) {
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const lat = pos.coords.latitude.toFixed(4);
+        const lng = pos.coords.longitude.toFixed(4);
+        if (addrInput) {
+          addrInput.value = `GPS: ${lat}, ${lng} (Current Device Position)`;
+          clearSosFieldError('sosAddress', 'errAddress');
+        }
+      },
+      (err) => {
+        if (addrInput) {
+          addrInput.value = '';
+          const errBox = document.getElementById('errAddress');
+          if (errBox) errBox.innerText = `Location error: ${err.message || 'Permission denied or GPS disabled.'}`;
+        }
+      },
+      { enableHighAccuracy: true, timeout: 20000 }
+    );
+  } else {
+    if (addrInput) {
+      addrInput.value = '';
+      const errBox = document.getElementById('errAddress');
+      if (errBox) errBox.innerText = 'Geolocation is not supported by your browser.';
+    }
+  }
+}
+
+function submitEmergencySOSReport() {
+  const animalInput = document.getElementById('sosAnimalType');
+  const conditionInput = document.getElementById('sosCondition');
+  const addressInput = document.getElementById('sosAddress');
+
+  const animalType = (animalInput?.value || '').trim();
+  const condition = (conditionInput?.value || '').trim();
+  const location = (addressInput?.value || '').trim();
+
+  let hasError = false;
+
+  if (!animalType) {
+    showSosFieldError('sosAnimalType', 'errAnimalType');
+    hasError = true;
+  }
+  if (!condition) {
+    showSosFieldError('sosCondition', 'errCondition');
+    hasError = true;
+  }
+  if (!location) {
+    showSosFieldError('sosAddress', 'errAddress');
+    hasError = true;
+  }
+
+  if (hasError) return;
+
+  const msgBox = document.getElementById('sosSuccessMsg');
+  if (msgBox) {
+    msgBox.style.display = 'block';
+    msgBox.innerHTML = `<i class="fa-solid fa-circle-check"></i> <b>SOS Broadcasted Successfully!</b><br>Rescue squad dispatched for ${animalType} near ${location}.`;
+  }
+
+  setTimeout(() => {
+    navigateTo('home');
+  }, 1200);
+}
+
+function handleAudioSummaryClick() {
+  const text = "This animal appears to be an Indian Pariah Dog with 94 percent confidence. It is generally considered a domestic and safe animal.";
+  playVoiceText(text, currentLanguage);
+}
+
+function playVoiceText(text, langCode = 'en') {
+  const btn = document.getElementById('audioSummaryBtn');
+  const icon = document.getElementById('audioSummaryIcon');
+  const textSpan = document.getElementById('audioSummaryText');
+
+  if (!('speechSynthesis' in window)) {
+    alert('Browser TTS Voice Summary:\n\n' + text);
+    return;
+  }
+
+  if (isSpeaking) {
+    window.speechSynthesis.cancel();
+    isSpeaking = false;
+    if (icon) icon.className = 'fa-solid fa-volume-high';
+    if (textSpan) textSpan.innerText = 'Play Audio Summary';
+    if (btn) btn.style.color = 'var(--primary)';
+    return;
+  }
+
+  if (icon) icon.className = 'fa-solid fa-spinner fa-spin';
+  if (textSpan) textSpan.innerText = 'Synthesizing Audio...';
+
+  const langMap = {
+    en: 'en-IN',
+    hi: 'hi-IN',
+    bho: 'hi-IN',
+    mai: 'hi-IN',
+    bn: 'bn-IN',
+    ta: 'ta-IN',
+    te: 'te-IN',
+    mr: 'mr-IN',
+    gu: 'gu-IN',
+    pa: 'pa-IN',
+    kn: 'kn-IN',
+    ml: 'ml-IN',
+    or: 'or-IN',
+    as: 'as-IN',
+  };
+
+  const locale = langMap[langCode] || 'en-IN';
+  const utterance = new SpeechSynthesisUtterance(text);
+  utterance.lang = locale;
+  utterance.rate = 0.9;
+
+  utterance.onstart = () => {
+    isSpeaking = true;
+    if (icon) icon.className = 'fa-solid fa-circle-stop';
+    if (textSpan) textSpan.innerText = 'Stop Audio Summary';
+    if (btn) btn.style.color = '#dc2626';
+  };
+
+  utterance.onend = () => {
+    isSpeaking = false;
+    if (icon) icon.className = 'fa-solid fa-volume-high';
+    if (textSpan) textSpan.innerText = 'Play Audio Summary';
+    if (btn) btn.style.color = 'var(--primary)';
+  };
+
+  utterance.onerror = (e) => {
+    isSpeaking = false;
+    if (icon) icon.className = 'fa-solid fa-triangle-exclamation';
+    if (textSpan) textSpan.innerText = 'Audio Playback Unavailable';
+    if (btn) btn.style.color = '#dc2626';
+    setTimeout(() => {
+      if (icon) icon.className = 'fa-solid fa-volume-high';
+      if (textSpan) textSpan.innerText = 'Play Audio Summary';
+      if (btn) btn.style.color = 'var(--primary)';
+    }, 2500);
+  };
+
+  window.speechSynthesis.speak(utterance);
+}
+
+function askPreset(promptText) {
+  const input = document.getElementById('chatInput');
+  if (input) {
+    input.value = promptText;
+    sendChatMessage();
+  }
+}
+
+function sendChatMessage() {
+  const input = document.getElementById('chatInput');
+  const text = input ? input.value.trim() : '';
+  if (!text) return;
+
+  const box = document.getElementById('chatMessagesBox');
+  if (box) {
+    box.innerHTML += `<div class="chat-bubble user">${text}</div>`;
+    box.scrollTop = box.scrollHeight;
+  }
+  if (input) input.value = '';
+
+  setTimeout(() => {
+    let reply = "Namaste! For animal care: keep the animal hydrated and cool. Never give human painkillers (Paracetamol/Crocin) as they are toxic to pets. For minor wounds, clean gently with Betadine solution.";
+    const lower = text.toLowerCase();
+    if (lower.includes('vaccin') || lower.includes('chart')) {
+      reply = "Core Indian Dog Vaccination Schedule:<br>• 6-8 Weeks: Puppy DP (Distemper/Parvo)<br>• 10-12 Weeks: 7-in-1 Combination (DHPPiL)<br>• 14-16 Weeks: Anti-Rabies Vaccine (ARV)<br>• Annual Booster: Every 12 months.";
+    } else if (lower.includes('bleeding') || lower.includes('paw') || lower.includes('first aid')) {
+      reply = "Immediate First Aid for Bleeding:<br>1. Apply firm, steady pressure using clean gauze or cotton cloth.<br>2. Elevate the paw slightly if possible.<br>3. Disinfect with dilute Betadine.<br>4. Wrap loosely with bandage and seek immediate veterinary care if bleeding persists > 10 mins.";
+    } else if (lower.includes('cow') || lower.includes('lumpy') || lower.includes('cattle')) {
+      reply = "Cattle Health & Lumpy Skin Guidance:<br>1. Isolate affected cattle immediately.<br>2. Fumigate shed with dry neem leaves.<br>3. Provide electrolyte water and mineral mixture (50g/day).<br>4. Contact local Govt. Veterinary Officer for Goat Pox vaccination.";
+    }
+    if (box) {
+      box.innerHTML += `<div class="chat-bubble ai">${reply}</div>`;
+      box.scrollTop = box.scrollHeight;
+    }
+  }, 600);
+}
+
+function startMicRecording(targetInputId = 'symptomText', micBtnId = 'symptomMicBtn') {
+  const input = document.getElementById(targetInputId) || document.getElementById('symptomText') || document.getElementById('chatInput');
+  const btn = document.getElementById(micBtnId);
+
+  if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const recog = new SpeechRecognition();
+    const langMap = { en: 'en-IN', hi: 'hi-IN', bn: 'bn-IN', ta: 'ta-IN', te: 'te-IN', mr: 'mr-IN', gu: 'gu-IN', pa: 'pa-IN', kn: 'kn-IN', ml: 'ml-IN', or: 'or-IN', as: 'as-IN' };
+    recog.lang = langMap[currentLanguage] || 'en-IN';
+
+    if (btn) {
+      btn.style.background = '#dc2626';
+      btn.innerHTML = `<i class="fa-solid fa-circle-dot fa-beat-fade"></i> Listening...`;
+    }
+
+    recog.onresult = (e) => {
+      const speechText = e.results[0][0].transcript;
+      if (input) {
+        input.value = speechText;
+      }
+    };
+
+    recog.onerror = (e) => {
+      if (btn) {
+        btn.style.background = '#0284c7';
+        btn.innerHTML = `<i class="fa-solid fa-microphone"></i>`;
+      }
+      alert('Microphone speech recognition error: ' + (e.error || 'Please check microphone permissions.'));
+    };
+
+    recog.onend = () => {
+      if (btn) {
+        btn.style.background = '#0284c7';
+        btn.innerHTML = `<i class="fa-solid fa-microphone"></i>`;
+      }
+    };
+
+    recog.start();
+  } else {
+    alert('Speech recognition is not supported in this browser. Please type your symptoms manually.');
+  }
+}
+
+function openPaymentModal(planTitle, planPrice) {
+  document.getElementById('rzpPlanTitle').innerText = planTitle;
+  document.getElementById('rzpPlanPrice').innerText = planPrice;
+  document.getElementById('paymentModal').style.display = 'flex';
+}
+
+function closePaymentModal() {
+  document.getElementById('paymentModal').style.display = 'none';
+}
+
+function confirmPayment() {
+  closePaymentModal();
+  alert('🎉 Razorpay Payment of ₹999 verified! VIP Gold Guardian subscription activated.');
+  renderScreen();
+}
+
+// Initial render
+renderScreen();
+

@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PashuRakhshak (पशुरक्षक) - Live Interactive Mobile Preview</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app-layout">
+    <!-- Sidebar Control Panel -->
+    <div class="control-panel">
+      <div class="brand-header">
+        <div class="logo-box">
+          <i class="fa-solid fa-paw"></i>
+        </div>
+        <div>
+          <h2>PashuRakhshak</h2>
+          <span class="sub">AI Animal Care & Rescue</span>
+        </div>
+      </div>
+
+      <div class="panel-section">
+        <label><i class="fa-solid fa-language"></i> Select Language (13 Indian Regional)</label>
+        <select id="languageSelect" onchange="changeLanguage(this.value)">
+          <option value="en">English (Default)</option>
+          <option value="hi">हिन्दी (Hindi)</option>
+          <option value="bho">भोजपुरी (Bhojpuri)</option>
+          <option value="bn">বাংলা (Bengali)</option>
+          <option value="ta">தமிழ் (Tamil)</option>
+          <option value="te">తెలుగు (Telugu)</option>
+          <option value="mr">मराठी (Marathi)</option>
+          <option value="gu">ગુજરાતી (Gujarati)</option>
+          <option value="pa">ਪੰਜਾਬੀ (Punjabi)</option>
+          <option value="kn">ಕನ್ನಡ (Kannada)</option>
+          <option value="ml">മലയാളം (Malayalam)</option>
+          <option value="or">ଓଡ଼ିଆ (Odia)</option>
+          <option value="as">অসমীয়া (Assamese)</option>
+        </select>
+      </div>
+
+      <div class="panel-section">
+        <label><i class="fa-solid fa-user-shield"></i> Active Role Mode</label>
+        <div class="role-pills">
+          <button class="role-pill active" onclick="switchRole('User', this)"><i class="fa-solid fa-heart"></i> Pet Parent</button>
+          <button class="role-pill" onclick="switchRole('Seller', this)"><i class="fa-solid fa-store"></i> Breeder/Seller</button>
+          <button class="role-pill" onclick="switchRole('NGO', this)"><i class="fa-solid fa-truck-medical"></i> Rescue NGO</button>
+        </div>
+      </div>
+
+      <div class="panel-section">
+        <label><i class="fa-solid fa-microchip"></i> Dual-Level AI Scanner Mode</label>
+        <div class="model-badge-box">
+          <span class="badge ml"><i class="fa-solid fa-bolt"></i> Level 1: Fast On-Device ML</span>
+          <span class="badge cloud"><i class="fa-solid fa-cloud"></i> Level 2: Gemini Deep Vision</span>
+        </div>
+      </div>
+
+      <div class="panel-section status-box">
+        <div class="status-item">
+          <span>Backend BaaS</span>
+          <span class="status-val success"><i class="fa-solid fa-circle-check"></i> Supabase Connected</span>
+        </div>
+        <div class="status-item">
+          <span>PostGIS Geospatial</span>
+          <span class="status-val success"><i class="fa-solid fa-map-pin"></i> 5 NGOs within 5 km</span>
+        </div>
+        <div class="status-item">
+          <span>Payment Gateway</span>
+          <span class="status-val success"><i class="fa-solid fa-shield-halved"></i> Razorpay Ready</span>
+        </div>
+      </div>
+
+      <div class="flutter-run-info">
+        <h4><i class="fa-brands fa-flutter"></i> Run in Native Flutter</h4>
+        <code>flutter run</code>
+        <p>Supports Android, iOS, Web & Desktop.</p>
+      </div>
+    </div>
+
+    <!-- Mobile Device Preview Mockup -->
+    <div class="device-container">
+      <div class="phone-frame">
+        <div class="phone-notch">
+          <div class="speaker"></div>
+          <div class="camera-lens"></div>
+        </div>
+
+        <!-- Phone Screen Content -->
+        <div class="phone-screen">
+          <!-- Top App Bar -->
+          <div class="mobile-app-bar">
+            <div class="app-title-group">
+              <div class="mini-logo"><i class="fa-solid fa-paw"></i></div>
+              <div>
+                <h3 id="appTitleText">PashuRakhshak</h3>
+                <span class="app-status-tag" id="userRoleTag">Pet Parent</span>
+              </div>
+            </div>
+            <div class="app-bar-actions">
+              <button class="sos-mini-btn" onclick="navigateTo('report-emergency')" title="Emergency SOS">
+                <i class="fa-solid fa-triangle-exclamation"></i> SOS
+              </button>
+              <button class="avatar-btn" onclick="navigateTo('profile')" title="Profile">
+                <span>YS</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Screen Container (Dynamically Switched) -->
+          <div class="screen-viewport" id="screenViewport">
+            <!-- Screen content injected via JS -->
+          </div>
+
+          <!-- Bottom Navigation Bar -->
+          <div class="mobile-bottom-nav">
+            <button class="nav-btn active" id="nav-home" onclick="navigateTo('home')">
+              <i class="fa-solid fa-house"></i>
+              <span id="navHomeText">Home</span>
+            </button>
+            <button class="nav-btn scan-highlight" id="nav-identify" onclick="navigateTo('identify')">
+              <div class="scan-icon-circle"><i class="fa-solid fa-camera"></i></div>
+              <span>Scan AI</span>
+            </button>
+            <button class="nav-btn" id="nav-help" onclick="navigateTo('help')">
+              <i class="fa-solid fa-location-dot"></i>
+              <span id="navHelpText">Find Help</span>
+            </button>
+            <button class="nav-btn" id="nav-adopt" onclick="navigateTo('adopt')">
+              <i class="fa-solid fa-heart"></i>
+              <span id="navAdoptText">Adopt</span>
+            </button>
+            <button class="nav-btn" id="nav-community" onclick="navigateTo('community')">
+              <i class="fa-solid fa-users"></i>
+              <span id="navCommText">Community</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Razorpay Payment Modal Simulation -->
+  <div class="modal-backdrop" id="paymentModal">
+    <div class="payment-modal-card">
+      <div class="rzp-header">
+        <div class="rzp-brand"><i class="fa-solid fa-shield"></i> Razorpay Secure Checkout</div>
+        <button class="close-btn" onclick="closePaymentModal()">&times;</button>
+      </div>
+      <div class="rzp-body">
+        <div class="plan-summary">
+          <h4 id="rzpPlanTitle">PashuRakhshak VIP Gold Plan</h4>
+          <div class="rzp-price" id="rzpPlanPrice">₹999 / year</div>
+        </div>
+        <p class="rzp-desc">Includes unlimited Gemini Vision deep scans, priority NGO emergency ambulance dispatch, and 24/7 AI Vet support.</p>
+        <div class="payment-methods">
+          <div class="pay-method active"><i class="fa-brands fa-google-pay"></i> UPI / GPay / PhonePe</div>
+          <div class="pay-method"><i class="fa-regular fa-credit-card"></i> Debit / Credit Card</div>
+          <div class="pay-method"><i class="fa-solid fa-building-columns"></i> Net Banking</div>
+        </div>
+        <button class="rzp-pay-btn" onclick="confirmPayment()">
+          <i class="fa-solid fa-lock"></i> Pay Now & Activate VIP
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Hidden File Upload Inputs for Animal Photo Selection / Camera Capture -->
+  <input type="file" id="animalFileInput" accept="image/*" style="display:none" onchange="handleAnimalFileSelect(event)">
+  <input type="file" id="animalCameraInput" accept="image/*" capture="environment" style="display:none" onchange="handleAnimalFileSelect(event)">
+
+  <script src="app.js"></script>
+</body>
+</html>
