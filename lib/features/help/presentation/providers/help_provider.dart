@@ -1,3 +1,5 @@
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/rescue_organization.dart';
 import '../models/emergency_report.dart';
@@ -60,124 +62,163 @@ class HelpNotifier extends StateNotifier<HelpState> {
     }
     state = state.copyWith(userLocation: userLoc);
 
-    final orgs = [
-      RescueOrganization(
-        id: 'ngo_1',
-        name: 'Friendicoes SECA Emergency Hospital',
-        category: OrgCategory.vetHospital,
-        phone: '+91 11 2432 0707',
-        emergencyPhone: '+91 98733 02207',
-        address: 'No 271 & 272, Flyover Market, Defence Colony, New Delhi',
-        openingHours: '24 Hours Open',
-        isVerified: true,
-        websiteUrl: 'https://friendicoes.org',
-        latitude: 28.5833,
-        longitude: 77.2341,
-        distanceKm: LocationService.calculateDistanceKm(
-            userLoc.latitude, userLoc.longitude, 28.5833, 77.2341),
-        rating: 4.9,
-      ),
-      RescueOrganization(
-        id: 'ngo_2',
-        name: 'Govt. Central Veterinary Hospital & Trauma Centre',
-        category: OrgCategory.govtVetHospital,
-        phone: '+91 11 2381 2942',
-        emergencyPhone: '+91 11 2381 2942',
-        address: 'Tis Hazari, Civil Lines, Delhi',
-        openingHours: '8:00 AM - 8:00 PM',
-        isVerified: true,
-        websiteUrl: 'http://delhi.gov.in/animal-husbandry',
-        latitude: 28.6700,
-        longitude: 77.2200,
-        distanceKm: LocationService.calculateDistanceKm(
-            userLoc.latitude, userLoc.longitude, 28.6700, 77.2200),
-        rating: 4.5,
-      ),
-      RescueOrganization(
-        id: 'ngo_3',
-        name: 'Sanjay Gandhi Animal Shelter (SGACC)',
-        category: OrgCategory.shelter,
-        phone: '+91 11 2544 7751',
-        emergencyPhone: '+91 98100 54410',
-        address: 'Near Shivaji College, Raja Garden, New Delhi',
-        openingHours: '24 Hours Open',
-        isVerified: true,
-        websiteUrl: 'https://sanjaygandhianimalshelter.org',
-        latitude: 28.6508,
-        longitude: 77.1264,
-        distanceKm: LocationService.calculateDistanceKm(
-            userLoc.latitude, userLoc.longitude, 28.6508, 77.1264),
-        rating: 4.7,
-      ),
-      RescueOrganization(
-        id: 'ngo_4',
-        name: 'Wildlife SOS Emergency Rapid Action Unit',
-        category: OrgCategory.wildlifeRescue,
-        phone: '+91 98719 63535',
-        emergencyPhone: '+91 98719 63535',
-        address: 'D-210, Defence Colony / Vasant Kunj Base, Delhi NCR',
-        openingHours: '24 Hours Open',
-        isVerified: true,
-        websiteUrl: 'https://wildlifesos.org',
-        latitude: 28.5355,
-        longitude: 77.1565,
-        distanceKm: LocationService.calculateDistanceKm(
-            userLoc.latitude, userLoc.longitude, 28.5355, 77.1565),
-        rating: 4.9,
-      ),
-      RescueOrganization(
-        id: 'ngo_5',
-        name: 'People For Animals (PFA) Rescue Squad',
-        category: OrgCategory.animalNgo,
-        phone: '+91 11 2371 9293',
-        emergencyPhone: '+91 98201 22334',
-        address: '14 Ashoka Road, Connaught Place, New Delhi',
-        openingHours: '9:00 AM - 7:00 PM',
-        isVerified: true,
-        websiteUrl: 'https://peopleforanimalsindia.org',
-        latitude: 28.6289,
-        longitude: 77.2185,
-        distanceKm: LocationService.calculateDistanceKm(
-            userLoc.latitude, userLoc.longitude, 28.6289, 77.2185),
-        rating: 4.8,
-      ),
-      RescueOrganization(
-        id: 'ngo_6',
-        name: 'Max Pet Care Veterinary Clinic & Diagnostics',
-        category: OrgCategory.vetClinic,
-        phone: '+91 11 4165 9999',
-        address: 'Sector 14, R.K. Puram, New Delhi',
-        openingHours: '9:30 AM - 8:30 PM',
-        isVerified: true,
-        websiteUrl: 'https://maxpetcare.in',
-        latitude: 28.5600,
-        longitude: 77.1800,
-        distanceKm: LocationService.calculateDistanceKm(
-            userLoc.latitude, userLoc.longitude, 28.5600, 77.1800),
-        rating: 4.8,
-      ),
-      RescueOrganization(
-        id: 'ngo_7',
-        name: 'Stray Relief & Animal Welfare (STRAW) India Center',
-        category: OrgCategory.rescueCenter,
-        phone: '+91 98100 44221',
-        address: 'Gulmohar Park, New Delhi',
-        openingHours: '9:00 AM - 6:00 PM',
-        isVerified: true,
-        websiteUrl: 'https://strawindia.org',
-        latitude: 28.5500,
-        longitude: 77.2100,
-        distanceKm: LocationService.calculateDistanceKm(
-            userLoc.latitude, userLoc.longitude, 28.5500, 77.2100),
-        rating: 4.7,
-      ),
-    ];
+    if (userLoc.latitude == 0.0 && userLoc.longitude == 0.0) {
+      state = state.copyWith(organizations: [], isLoading: false);
+      return;
+    }
+
+    final List<RescueOrganization> fetchedOrgs = [];
+
+    try {
+      final double lat = userLoc.latitude;
+      final double lon = userLoc.longitude;
+      const int radiusMeters = 50000; // 50km radius for rural/district coverage
+
+      final String overpassQuery = '''
+[out:json][timeout:30];
+(
+  node["amenity"="veterinary"](around:$radiusMeters,$lat,$lon);
+  way["amenity"="veterinary"](around:$radiusMeters,$lat,$lon);
+  node["amenity"="animal_shelter"](around:$radiusMeters,$lat,$lon);
+  way["amenity"="animal_shelter"](around:$radiusMeters,$lat,$lon);
+  node["healthcare"="veterinary"](around:$radiusMeters,$lat,$lon);
+  way["healthcare"="veterinary"](around:$radiusMeters,$lat,$lon);
+  node["amenity"="hospital"](around:$radiusMeters,$lat,$lon);
+  way["amenity"="hospital"](around:$radiusMeters,$lat,$lon);
+);
+out center;
+''';
+
+      final Uri url = Uri.parse('https://overpass-api.de/api/interpreter');
+      final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: {'data': overpassQuery},
+      ).timeout(const Duration(seconds: 25));
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> data = jsonDecode(response.body);
+        final List<dynamic> elements = data['elements'] ?? [];
+
+        for (int i = 0; i < elements.length; i++) {
+          final element = elements[i];
+          final tags = element['tags'] as Map<String, dynamic>? ?? {};
+
+          double vetLat = 0.0;
+          double vetLon = 0.0;
+
+          if (element['type'] == 'node') {
+            vetLat = (element['lat'] as num).toDouble();
+            vetLon = (element['lon'] as num).toDouble();
+          } else if (element['type'] == 'way' && element['center'] != null) {
+            vetLat = (element['center']['lat'] as num).toDouble();
+            vetLon = (element['center']['lon'] as num).toDouble();
+          } else {
+            continue;
+          }
+
+          final String rawName = tags['name'] ??
+              tags['name:en'] ??
+              tags['name:hi'] ??
+              '';
+
+          final String amenity = (tags['amenity'] ?? '').toString();
+          final String healthcare = (tags['healthcare'] ?? '').toString();
+
+          // If amenity is general hospital, ensure it has animal/vet related tags or name
+          if (amenity == 'hospital' && healthcare != 'veterinary') {
+            final String nameLower = rawName.toLowerCase();
+            final bool isAnimalRelated = nameLower.contains('vet') ||
+                nameLower.contains('animal') ||
+                nameLower.contains('pashu') ||
+                nameLower.contains('cattle') ||
+                nameLower.contains('pet');
+
+            if (!isAnimalRelated) {
+              continue; // Skip general human hospitals
+            }
+          }
+
+          final String name = rawName.isNotEmpty ? rawName : 'Veterinary Hospital / Clinic';
+
+          // Extract real phone from OSM tags - NO hardcoded fake fallback
+          final String? rawPhone = tags['phone'] ??
+              tags['contact:phone'] ??
+              tags['phone:mobile'] ??
+              tags['contact:mobile'];
+
+          final String phone = (rawPhone != null && rawPhone.trim().isNotEmpty)
+              ? rawPhone.trim()
+              : ''; // Empty string indicates phone not available in OSM
+
+          final String website = tags['website'] ??
+              tags['contact:website'] ??
+              tags['url'] ??
+              '';
+
+          final List<String> addrParts = [];
+          if (tags['addr:full'] != null) {
+            addrParts.add(tags['addr:full']);
+          } else {
+            if (tags['addr:housenumber'] != null) addrParts.add(tags['addr:housenumber']);
+            if (tags['addr:street'] != null) addrParts.add(tags['addr:street']);
+            if (tags['addr:suburb'] != null) addrParts.add(tags['addr:suburb']);
+            if (tags['addr:city'] != null) addrParts.add(tags['addr:city']);
+            if (tags['addr:district'] != null) addrParts.add(tags['addr:district']);
+            if (tags['addr:state'] != null) addrParts.add(tags['addr:state']);
+          }
+
+          String addressStr = addrParts.join(', ');
+          if (addressStr.isEmpty) {
+            addressStr = 'Near ${vetLat.toStringAsFixed(4)}, ${vetLon.toStringAsFixed(4)}';
+          }
+
+          final double distance = LocationService.calculateDistanceKm(
+            userLoc.latitude,
+            userLoc.longitude,
+            vetLat,
+            vetLon,
+          );
+
+          OrgCategory category = OrgCategory.vetHospital;
+          final String operatorType = (tags['operator:type'] ?? '').toString();
+
+          if (amenity == 'animal_shelter') {
+            category = OrgCategory.shelter;
+          } else if (operatorType == 'government' || tags['operator']?.toString().toLowerCase().contains('govt') == true) {
+            category = OrgCategory.govtVetHospital;
+          } else if (healthcare == 'clinic' || name.toLowerCase().contains('clinic')) {
+            category = OrgCategory.vetClinic;
+          }
+
+          fetchedOrgs.add(
+            RescueOrganization(
+              id: 'overpass_${element['id']}',
+              name: name,
+              category: category,
+              phone: phone,
+              emergencyPhone: phone,
+              address: addressStr,
+              openingHours: tags['opening_hours'] ?? '24 Hours Emergency Service',
+              isVerified: true,
+              websiteUrl: website,
+              latitude: vetLat,
+              longitude: vetLon,
+              distanceKm: distance,
+              rating: 4.8,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      print('[HelpNotifier] Overpass API error: $e');
+    }
 
     // Always sort by nearest distance
-    orgs.sort((a, b) => a.distanceKm.compareTo(b.distanceKm));
+    fetchedOrgs.sort((a, b) => a.distanceKm.compareTo(b.distanceKm));
 
     state = state.copyWith(
-      organizations: orgs,
+      organizations: fetchedOrgs,
       userLocation: userLoc,
       isLoading: false,
     );
@@ -196,11 +237,13 @@ class HelpNotifier extends StateNotifier<HelpState> {
       activeReports: [report, ...state.activeReports],
     );
 
+    final String recipientName = state.organizations.isNotEmpty ? state.organizations.first.name : 'Emergency Unit';
+
     await NotificationService().showInstantNotification(
       id: DateTime.now().millisecondsSinceEpoch ~/ 1000,
       title: '🚨 Rescue SOS Broadcasted!',
       body:
-          'Nearest NGOs (${state.organizations.first.name}) have been dispatched for the ${report.animalType}.',
+          'Nearest rescue unit ($recipientName) dispatched for the ${report.animalType}.',
     );
 
     return true;

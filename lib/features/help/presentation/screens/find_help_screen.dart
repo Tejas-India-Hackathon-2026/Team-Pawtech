@@ -188,6 +188,32 @@ class _FindHelpScreenState extends ConsumerState<FindHelpScreen> {
 
     final orgs = helpState.filteredOrgs;
 
+    if (orgs.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.local_hospital_outlined, size: 64, color: AppColors.textMuted),
+              const SizedBox(height: 16),
+              Text(
+                'No registered vet services found nearby.',
+                style: AppTypography.titleMedium.copyWith(fontWeight: FontWeight.bold),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Try calling emergency animal helplines or the district veterinary office in Jamui town.',
+                style: AppTypography.bodySmall.copyWith(color: AppColors.textSecondary),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     return ListView.separated(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 80),
       itemCount: orgs.length,
@@ -321,13 +347,13 @@ class _FindHelpScreenState extends ConsumerState<FindHelpScreen> {
                   Expanded(
                     child: ElevatedButton.icon(
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
+                        backgroundColor: org.phone.isNotEmpty ? AppColors.primary : Colors.grey.shade400,
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(vertical: 10),
                       ),
-                      icon: const Icon(Icons.phone, size: 16),
-                      label: const Text('Call'),
-                      onPressed: () => _callOrg(context, org.name, org.phone),
+                      icon: Icon(org.phone.isNotEmpty ? Icons.phone : Icons.phone_disabled, size: 16),
+                      label: Text(org.phone.isNotEmpty ? 'Call' : 'Phone not available'),
+                      onPressed: org.phone.isNotEmpty ? () => _callOrg(context, org.name, org.phone) : null,
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -365,6 +391,8 @@ class _FindHelpScreenState extends ConsumerState<FindHelpScreen> {
   }
 
   Widget _buildMapSimulation(HelpState helpState) {
+    final orgs = helpState.filteredOrgs;
+
     return Container(
       color: const Color(0xFFE2E8F0),
       child: Stack(
@@ -376,32 +404,32 @@ class _FindHelpScreenState extends ConsumerState<FindHelpScreen> {
                 const Icon(Icons.map, size: 80, color: AppColors.textMuted),
                 const SizedBox(height: 12),
                 Text(
-                  'PostGIS Geospatial Map Active',
+                  'OpenStreetMap Overpass Geospatial Active',
                   style: AppTypography.titleMedium.copyWith(color: AppColors.textSecondary),
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Displaying ${helpState.filteredOrgs.length} verified organizations sorted by distance',
+                  'Displaying ${orgs.length} verified organizations sorted by real GPS distance',
                   style: AppTypography.bodySmall,
                 ),
               ],
             ),
           ),
-          Positioned(
-            top: 60,
-            left: 80,
-            child: const _MapPin(name: 'Friendicoes SECA', dist: '1.8 km'),
-          ),
-          Positioned(
-            top: 140,
-            right: 60,
-            child: const _MapPin(name: 'Govt. Vet Hospital', dist: '2.4 km'),
-          ),
-          Positioned(
-            bottom: 120,
-            left: 100,
-            child: const _MapPin(name: 'Wildlife SOS Base', dist: '4.2 km'),
-          ),
+          ...orgs.take(4).toList().asMap().entries.map((entry) {
+            final idx = entry.key;
+            final org = entry.value;
+            final topOffsets = [60.0, 140.0, 220.0, 300.0];
+            final leftOffsets = [80.0, 180.0, 60.0, 140.0];
+
+            return Positioned(
+              top: topOffsets[idx % topOffsets.length],
+              left: leftOffsets[idx % leftOffsets.length],
+              child: _MapPin(
+                name: org.name.length > 20 ? '${org.name.substring(0, 18)}...' : org.name,
+                dist: '${org.distanceKm.toStringAsFixed(1)} km',
+              ),
+            );
+          }),
         ],
       ),
     );

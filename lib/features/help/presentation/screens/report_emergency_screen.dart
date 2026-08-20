@@ -54,35 +54,59 @@ class _ReportEmergencyScreenState extends ConsumerState<ReportEmergencyScreen> {
     try {
       Position? position = await LocationService.getAccurateLocation();
       if (position != null) {
+        final double lat = position.latitude;
+        final double lng = position.longitude;
+        final String rawCoordsStr = '${lat.toStringAsFixed(6)}, ${lng.toStringAsFixed(6)}';
+
         print('================ [GPS FETCH SUCCESS] ================');
-        print('Fetched Position Latitude:  ${position.latitude}');
-        print('Fetched Position Longitude: ${position.longitude}');
+        print('Fetched Position Latitude:  $lat');
+        print('Fetched Position Longitude: $lng');
         print('====================================================');
 
-        _latitude = position.latitude;
-        _longitude = position.longitude;
+        _latitude = lat;
+        _longitude = lng;
 
         try {
-          List<Placemark> placemarks = await placemarkFromCoordinates(position.latitude, position.longitude);
+          List<Placemark> placemarks = await placemarkFromCoordinates(lat, lng);
           if (placemarks.isNotEmpty) {
             final place = placemarks.first;
-            final addressParts = [
-              place.name,
-              place.street,
-              place.subLocality,
-              place.locality,
-              place.postalCode,
-              place.country,
-            ].where((p) => p != null && p.isNotEmpty).toSet().join(', ');
+            
+            // Build dynamic address from Placemark: subLocality/locality (area/city), subAdministrativeArea (district), administrativeArea (state)
+            final List<String> addressParts = [];
 
-            _addressController.text = addressParts.isNotEmpty
-                ? addressParts
-                : '${position.latitude.toStringAsFixed(5)}, ${position.longitude.toStringAsFixed(5)}';
+            final String? areaOrCity = (place.subLocality != null && place.subLocality!.isNotEmpty)
+                ? place.subLocality
+                : (place.locality != null && place.locality!.isNotEmpty ? place.locality : null);
+
+            if (areaOrCity != null && areaOrCity.isNotEmpty) {
+              addressParts.add(areaOrCity);
+            }
+
+            if (place.subAdministrativeArea != null &&
+                place.subAdministrativeArea!.isNotEmpty &&
+                !addressParts.contains(place.subAdministrativeArea)) {
+              addressParts.add(place.subAdministrativeArea!);
+            }
+
+            if (place.administrativeArea != null &&
+                place.administrativeArea!.isNotEmpty &&
+                !addressParts.contains(place.administrativeArea)) {
+              addressParts.add(place.administrativeArea!);
+            }
+
+            final String readablePlaceName = addressParts.join(', ');
+
+            if (readablePlaceName.isNotEmpty) {
+              _addressController.text = '$readablePlaceName ($rawCoordsStr)';
+            } else {
+              _addressController.text = rawCoordsStr;
+            }
           } else {
-            _addressController.text = '${position.latitude.toStringAsFixed(5)}, ${position.longitude.toStringAsFixed(5)}';
+            _addressController.text = rawCoordsStr;
           }
-        } catch (_) {
-          _addressController.text = '${position.latitude.toStringAsFixed(5)}, ${position.longitude.toStringAsFixed(5)}';
+        } catch (geoErr) {
+          print('[Reverse Geocode Error] Fallback to raw coordinates: $geoErr');
+          _addressController.text = rawCoordsStr;
         }
       }
     } catch (e) {

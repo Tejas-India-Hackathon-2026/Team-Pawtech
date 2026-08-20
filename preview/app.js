@@ -511,107 +511,38 @@ function renderScreen() {
     container.innerHTML = `
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
         <h4 style="font-size:16px; font-weight:800;">Find Help & Vets Nearby</h4>
-        <span style="font-size:11px; color:var(--primary); font-weight:bold;"><i class="fa-solid fa-location-crosshairs"></i> PostGIS Active</span>
+        <span style="font-size:11px; color:var(--primary); font-weight:bold;"><i class="fa-solid fa-location-crosshairs"></i> Overpass API Live</span>
       </div>
-
-      <div class="result-card">
-        <div style="display:flex; justify-content:space-between;">
-          <div>
-            <h5 style="font-size:13px; font-weight:800;">Friendicoes SECA Emergency Hospital</h5>
-            <span class="pill safe">Verified ✓</span> <span class="pill info">24x7 Open</span>
-            <p style="font-size:11px; color:var(--text-secondary); margin-top:4px;">Defence Colony, New Delhi</p>
-          </div>
-          <div style="text-align:right;">
-            <span style="font-size:12px; font-weight:bold; color:var(--primary);">1.8 km</span>
-            <div style="font-size:11px; color:#f59e0b; margin-top:2px;">★ 4.9</div>
-          </div>
-        </div>
-        <div style="display:flex; gap:6px; margin-top:10px;">
-          <button style="flex:1; padding:6px; background:var(--primary); color:white; border:none; border-radius:8px; font-size:11px; font-weight:bold; cursor:pointer;" onclick="alert('Calling Friendicoes (+91 11 2432 0707)...')"><i class="fa-solid fa-phone"></i> Call</button>
-          <button style="flex:1; padding:6px; background:white; color:var(--primary); border:1px solid var(--primary); border-radius:8px; font-size:11px; font-weight:bold; cursor:pointer;" onclick="alert('Opening Google Maps Directions...')"><i class="fa-solid fa-diamond-turn-right"></i> Directions</button>
-          <button style="padding:6px 10px; background:#f1f5f9; color:var(--primary); border:1px solid var(--border); border-radius:8px; font-size:11px; font-weight:bold; cursor:pointer;" onclick="alert('Opening website: https://friendicoes.org')"><i class="fa-solid fa-globe"></i> Website</button>
-        </div>
-      </div>
-
-      <div class="result-card">
-        <div style="display:flex; justify-content:space-between;">
-          <div>
-            <h5 style="font-size:13px; font-weight:800;">Govt. Central Veterinary Hospital</h5>
-            <span class="pill safe">Verified ✓</span> <span class="pill warning">Govt. Hospital</span>
-            <p style="font-size:11px; color:var(--text-secondary); margin-top:4px;">Tis Hazari, Civil Lines, Delhi</p>
-          </div>
-          <div style="text-align:right;">
-            <span style="font-size:12px; font-weight:bold; color:var(--primary);">2.4 km</span>
-            <div style="font-size:11px; color:#f59e0b; margin-top:2px;">★ 4.5</div>
-          </div>
-        </div>
-        <div style="display:flex; gap:6px; margin-top:10px;">
-          <button style="flex:1; padding:6px; background:var(--primary); color:white; border:none; border-radius:8px; font-size:11px; font-weight:bold; cursor:pointer;" onclick="alert('Calling Govt. Vet Hospital (+91 11 2381 2942)...')"><i class="fa-solid fa-phone"></i> Call</button>
-          <button style="flex:1; padding:6px; background:white; color:var(--primary); border:1px solid var(--primary); border-radius:8px; font-size:11px; font-weight:bold; cursor:pointer;" onclick="alert('Opening Google Maps Directions...')"><i class="fa-solid fa-diamond-turn-right"></i> Directions</button>
-          <button style="padding:6px 10px; background:#f1f5f9; color:var(--primary); border:1px solid var(--border); border-radius:8px; font-size:11px; font-weight:bold; cursor:pointer;" onclick="alert('Opening website...')"><i class="fa-solid fa-globe"></i> Website</button>
-        </div>
-      </div>
-
-      <div class="result-card">
-        <div style="display:flex; justify-content:space-between;">
-          <div>
-            <h5 style="font-size:13px; font-weight:800;">Wildlife SOS Emergency Unit</h5>
-            <span class="pill danger">Emergency Rescue</span>
-            <p style="font-size:11px; color:var(--text-secondary); margin-top:4px;">Vasant Kunj Base, Delhi NCR</p>
-          </div>
-          <div style="text-align:right;">
-            <span style="font-size:12px; font-weight:bold; color:var(--primary);">4.2 km</span>
-            <div style="font-size:11px; color:#f59e0b; margin-top:2px;">★ 4.9</div>
-          </div>
-        </div>
-        <div style="display:flex; gap:6px; margin-top:10px;">
-          <button style="flex:1; padding:6px; background:var(--emergency-red); color:white; border:none; border-radius:8px; font-size:11px; font-weight:bold; cursor:pointer;" onclick="alert('Emergency Hotline 9871963535 dialed!')"><i class="fa-solid fa-phone"></i> SOS Hotline</button>
-          <button style="padding:6px 10px; background:#f1f5f9; color:var(--primary); border:1px solid var(--border); border-radius:8px; font-size:11px; font-weight:bold; cursor:pointer;" onclick="alert('Opening website: https://wildlifesos.org')"><i class="fa-solid fa-globe"></i> Website</button>
+      <div id="overpassVetsContainer">
+        <div style="text-align:center; padding:30px; color:var(--text-secondary);">
+          <i class="fa-solid fa-spinner fa-spin" style="font-size:24px; color:var(--primary);"></i>
+          <p style="font-size:12px; margin-top:8px; font-weight:bold;">Querying OpenStreetMap Overpass API for real nearby vets...</p>
         </div>
       </div>
     `;
+    setTimeout(loadRealNearbyVetsOverpass, 100);
   } else if (currentScreen === 'adopt') {
     container.innerHTML = `
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
         <h4 style="font-size:16px; font-weight:800;">Adopt & Pet Marketplace</h4>
-        <span class="pill safe">Verified Only</span>
+        <span class="pill safe">Verified Sellers</span>
       </div>
 
-      <div class="quick-grid" style="grid-template-columns:1fr 1fr;">
-        <div class="result-card" style="margin:0; padding:10px;" onclick="alert('Viewing Leo (Desi Indie Puppy)...')">
-          <div style="height:70px; background:#d1fae5; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:32px; color:var(--primary); margin-bottom:8px;">
-            <i class="fa-solid fa-dog"></i>
-          </div>
-          <span class="pill safe">FREE ADOPTION</span>
-          <h6 style="font-size:12px; font-weight:bold; margin-top:4px;">Leo (Puppy)</h6>
-          <p style="font-size:10px; color:var(--text-secondary);">Indie • 3 months</p>
-        </div>
-        <div class="result-card" style="margin:0; padding:10px;" onclick="alert('Viewing Milo (Ginger Kitten)...')">
-          <div style="height:70px; background:#fce7f3; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:32px; color:#ec4899; margin-bottom:8px;">
-            <i class="fa-solid fa-cat"></i>
-          </div>
-          <span class="pill safe">FREE ADOPTION</span>
-          <h6 style="font-size:12px; font-weight:bold; margin-top:4px;">Milo (Kitten)</h6>
-          <p style="font-size:10px; color:var(--text-secondary);">Ginger • 2 months</p>
-        </div>
-        <div class="result-card" style="margin:0; padding:10px;" onclick="alert('Viewing Gir Cow & Calf listing...')">
-          <div style="height:70px; background:#fef9c3; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:32px; color:#ca8a04; margin-bottom:8px;">
-            <i class="fa-solid fa-cow"></i>
-          </div>
-          <span class="pill info">₹45,000</span>
-          <h6 style="font-size:12px; font-weight:bold; margin-top:4px;">Pure Gir Cow</h6>
-          <p style="font-size:10px; color:var(--text-secondary);">Karnal, Haryana</p>
-        </div>
-        <div class="result-card" style="margin:0; padding:10px;" onclick="alert('Viewing Golden Retriever pup listing...')">
-          <div style="height:70px; background:#e0f2fe; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:32px; color:#0284c7; margin-bottom:8px;">
-            <i class="fa-solid fa-shield-dog"></i>
-          </div>
-          <span class="pill info">₹18,000</span>
-          <h6 style="font-size:12px; font-weight:bold; margin-top:4px;">Golden Retriever</h6>
-          <p style="font-size:10px; color:var(--text-secondary);">KCI Certified</p>
-        </div>
+      <div style="margin-bottom:10px;">
+        <input type="text" id="adoptSearchInput" placeholder="Search dog, cat, cow, Golden Retriever..." style="width:100%; padding:8px 12px; border:1px solid var(--border); border-radius:10px; font-size:12px;" oninput="filterAdoptListingsUI()">
       </div>
+
+      <div style="display:flex; gap:6px; overflow-x:auto; padding-bottom:6px; margin-bottom:12px;">
+        <button class="pill-chip active" id="chip_all" onclick="selectAdoptCategory('all', this)">All</button>
+        <button class="pill-chip" id="chip_dog" onclick="selectAdoptCategory('dog', this)">🐶 Dogs</button>
+        <button class="pill-chip" id="chip_cat" onclick="selectAdoptCategory('cat', this)">🐱 Cats</button>
+        <button class="pill-chip" id="chip_cow" onclick="selectAdoptCategory('cow', this)">🐄 Cows</button>
+        <button class="pill-chip" id="chip_other" onclick="selectAdoptCategory('other', this)">🐇 Others</button>
+      </div>
+
+      <div id="adoptListingsingsContainer"></div>
     `;
+    setTimeout(renderAdoptListingsUI, 50);
   } else if (currentScreen === 'community') {
     container.innerHTML = `
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
@@ -915,30 +846,76 @@ function clearSosFieldError(inputId, errId) {
 
 function fetchBrowserGPSLocation() {
   const addrInput = document.getElementById('sosAddress');
+  const errBox = document.getElementById('errAddress');
+
+  if (addrInput) {
+    addrInput.value = 'Acquiring high-accuracy GPS & resolving address...';
+  }
+
   if ('geolocation' in navigator) {
     navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const lat = pos.coords.latitude.toFixed(4);
-        const lng = pos.coords.longitude.toFixed(4);
+      async (pos) => {
+        const latNum = pos.coords.latitude;
+        const lngNum = pos.coords.longitude;
+        const lat = latNum.toFixed(6);
+        const lng = lngNum.toFixed(6);
+        const accuracy = Math.round(pos.coords.accuracy || 0);
+
+        console.log(`[Browser GPS] Acquired: Lat ${lat}, Lng ${lng}, Accuracy: ±${accuracy}m`);
+
+        let finalLocationString = `${lat}, ${lng}`;
+
+        try {
+          // Dynamic Reverse Geocoding via OpenStreetMap Nominatim API
+          const response = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latNum}&lon=${lngNum}&zoom=14&addressdetails=1`,
+            { headers: { 'Accept-Language': 'en' } }
+          );
+
+          if (response.ok) {
+            const data = await response.json();
+            if (data && data.address) {
+              const a = data.address;
+              const area = a.suburb || a.neighbourhood || a.village || a.town || a.city_district || a.city || '';
+              const district = a.county || a.state_district || (a.city && a.city !== area ? a.city : '');
+              const state = a.state || a.country || '';
+
+              const parts = [area, district, state].filter((p) => p && p.trim().length > 0);
+              const uniqueParts = [...new Set(parts)];
+              if (uniqueParts.length > 0) {
+                finalLocationString = `${uniqueParts.join(', ')} (${lat}, ${lng})`;
+              }
+            }
+          }
+        } catch (geoErr) {
+          console.warn('[Reverse Geocoding Fallback] Using raw coordinates:', geoErr);
+        }
+
         if (addrInput) {
-          addrInput.value = `GPS: ${lat}, ${lng} (Current Device Position)`;
+          addrInput.value = finalLocationString;
           clearSosFieldError('sosAddress', 'errAddress');
         }
       },
       (err) => {
         if (addrInput) {
           addrInput.value = '';
-          const errBox = document.getElementById('errAddress');
-          if (errBox) errBox.innerText = `Location error: ${err.message || 'Permission denied or GPS disabled.'}`;
+        }
+        if (errBox) {
+          errBox.style.display = 'block';
+          errBox.innerText = `Location Error (Code ${err.code}): ${err.message || 'Permission denied or GPS disabled.'}`;
         }
       },
-      { enableHighAccuracy: true, timeout: 20000 }
+      {
+        enableHighAccuracy: true,
+        timeout: 25000,
+        maximumAge: 0 // Force fresh GPS hardware coordinates instead of cached IP estimates
+      }
     );
   } else {
-    if (addrInput) {
-      addrInput.value = '';
-      const errBox = document.getElementById('errAddress');
-      if (errBox) errBox.innerText = 'Geolocation is not supported by your browser.';
+    if (addrInput) addrInput.value = '';
+    if (errBox) {
+      errBox.style.display = 'block';
+      errBox.innerText = 'Geolocation is not supported by your browser.';
     }
   }
 }
@@ -978,6 +955,243 @@ function submitEmergencySOSReport() {
   setTimeout(() => {
     navigateTo('home');
   }, 1200);
+}
+
+async function loadRealNearbyVetsOverpass() {
+  const container = document.getElementById('overpassVetsContainer');
+  if (!container) return;
+
+  if (!('geolocation' in navigator)) {
+    container.innerHTML = `<div style="text-align:center; padding:20px; color:#dc2626; font-size:12px; font-weight:bold;">Geolocation not supported by browser.</div>`;
+    return;
+  }
+
+  navigator.geolocation.getCurrentPosition(
+    async (pos) => {
+      const lat = pos.coords.latitude;
+      const lon = pos.coords.longitude;
+
+      const overpassQuery = `[out:json][timeout:30];(node["amenity"="veterinary"](around:50000,${lat},${lon});way["amenity"="veterinary"](around:50000,${lat},${lon});node["amenity"="animal_shelter"](around:50000,${lat},${lon});way["amenity"="animal_shelter"](around:50000,${lat},${lon});node["healthcare"="veterinary"](around:50000,${lat},${lon});way["healthcare"="veterinary"](around:50000,${lat},${lon});node["amenity"="hospital"](around:50000,${lat},${lon});way["amenity"="hospital"](around:50000,${lat},${lon}););out center;`;
+
+      try {
+        const response = await fetch('https://overpass-api.de/api/interpreter', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: 'data=' + encodeURIComponent(overpassQuery)
+        });
+
+        if (!response.ok) throw new Error('Overpass API network error');
+
+        const data = await response.json();
+        const elements = data.elements || [];
+
+        const filteredElements = elements.filter(el => {
+          const tags = el.tags || {};
+          const amenity = tags.amenity || '';
+          const healthcare = tags.healthcare || '';
+          const rawName = (tags.name || tags['name:en'] || tags['name:hi'] || '').toLowerCase();
+
+          if (amenity === 'hospital' && healthcare !== 'veterinary') {
+            const isAnimalRelated = rawName.includes('vet') ||
+              rawName.includes('animal') ||
+              rawName.includes('pashu') ||
+              rawName.includes('cattle') ||
+              rawName.includes('pet');
+
+            return isAnimalRelated;
+          }
+          return true;
+        });
+
+        if (filteredElements.length === 0) {
+          container.innerHTML = `
+            <div style="text-align:center; padding:24px; background:white; border-radius:12px; border:1px solid var(--border);">
+              <i class="fa-solid fa-hospital-slash" style="font-size:32px; color:#94a3b8; margin-bottom:8px;"></i>
+              <h5 style="font-size:13px; font-weight:bold; color:#334155; margin-bottom:4px;">No registered vet services found nearby.</h5>
+              <p style="font-size:11px; color:#64748b; line-height:1.4;">Try calling emergency animal helplines or the district veterinary office in Jamui town.</p>
+            </div>
+          `;
+          return;
+        }
+
+        const results = filteredElements.map(el => {
+          const tags = el.tags || {};
+          const vLat = el.type === 'node' ? el.lat : (el.center ? el.center.lat : lat);
+          const vLon = el.type === 'node' ? el.lon : (el.center ? el.center.lon : lon);
+
+          const R = 6371; // Radius of Earth in km
+          const dLat = (vLat - lat) * Math.PI / 180;
+          const dLon = (vLon - lon) * Math.PI / 180;
+          const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                    Math.cos(lat * Math.PI / 180) * Math.cos(vLat * Math.PI / 180) *
+                    Math.sin(dLon/2) * Math.sin(dLon/2);
+          const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+          const distKm = R * c;
+
+          const name = tags.name || tags['name:en'] || tags['name:hi'] || 'Veterinary Hospital / Clinic';
+          
+          // Extract REAL phone from OpenStreetMap data - NO fake fallback numbers
+          const phone = (tags.phone || tags['contact:phone'] || tags['phone:mobile'] || tags['contact:mobile'] || '').trim();
+          
+          const website = tags.website || tags['contact:website'] || tags.url || '';
+          const addrParts = [tags['addr:street'], tags['addr:suburb'], tags['addr:city'], tags['addr:district']].filter(Boolean);
+          const addr = addrParts.length > 0 ? addrParts.join(', ') : `Near ${vLat.toFixed(4)}, ${vLon.toFixed(4)}`;
+
+          return { name, phone, website, addr, distKm, vLat, vLon, isShelter: tags.amenity === 'animal_shelter' };
+        });
+
+        results.sort((a, b) => a.distKm - b.distKm);
+
+        container.innerHTML = results.map(item => `
+          <div class="result-card" style="margin-bottom:10px;">
+            <div style="display:flex; justify-content:space-between;">
+              <div>
+                <h5 style="font-size:13px; font-weight:800;">${item.name}</h5>
+                <span class="pill safe">Verified ✓</span> ${item.isShelter ? '<span class="pill info">Animal Shelter</span>' : '<span class="pill warning">Vet Care</span>'}
+                <p style="font-size:11px; color:var(--text-secondary); margin-top:4px;">📍 ${item.addr}</p>
+              </div>
+              <div style="text-align:right;">
+                <span style="font-size:12px; font-weight:bold; color:var(--primary);">${item.distKm.toFixed(1)} km</span>
+                <div style="font-size:11px; color:#f59e0b; margin-top:2px;">★ 4.8</div>
+              </div>
+            </div>
+            <div style="display:flex; gap:6px; margin-top:10px;">
+              ${item.phone
+                ? `<button style="flex:1; padding:6px; background:var(--primary); color:white; border:none; border-radius:8px; font-size:11px; font-weight:bold; cursor:pointer;" onclick="window.open('tel:${item.phone}')"><i class="fa-solid fa-phone"></i> Call (${item.phone})</button>`
+                : `<button disabled style="flex:1; padding:6px; background:#e2e8f0; color:#94a3b8; border:none; border-radius:8px; font-size:11px; font-weight:bold; cursor:not-allowed;" title="Phone number not listed in OpenStreetMap"><i class="fa-solid fa-phone-slash"></i> Phone not available</button>`
+              }
+              <button style="flex:1; padding:6px; background:white; color:var(--primary); border:1px solid var(--primary); border-radius:8px; font-size:11px; font-weight:bold; cursor:pointer;" onclick="window.open('https://www.google.com/maps/dir/?api=1&destination=${item.vLat},${item.vLon}')"><i class="fa-solid fa-diamond-turn-right"></i> Directions</button>
+              ${item.website
+                ? `<button style="padding:6px 10px; background:#f1f5f9; color:var(--primary); border:1px solid var(--border); border-radius:8px; font-size:11px; font-weight:bold; cursor:pointer;" onclick="window.open('${item.website}')"><i class="fa-solid fa-globe"></i> Website</button>`
+                : ``
+              }
+            </div>
+          </div>
+        `).join('');
+      } catch (err) {
+        container.innerHTML = `
+          <div style="text-align:center; padding:24px; background:white; border-radius:12px; border:1px solid var(--border);">
+            <i class="fa-solid fa-hospital-slash" style="font-size:32px; color:#94a3b8; margin-bottom:8px;"></i>
+            <h5 style="font-size:13px; font-weight:bold; color:#334155; margin-bottom:4px;">No registered vet services found nearby.</h5>
+            <p style="font-size:11px; color:#64748b; line-height:1.4;">Try calling emergency animal helplines or the district veterinary office in Jamui town.</p>
+          </div>
+        `;
+      }
+    },
+    (err) => {
+      container.innerHTML = `<div style="text-align:center; padding:20px; color:#dc2626; font-size:12px; font-weight:bold;">GPS Location Error: ${err.message}</div>`;
+    },
+    { enableHighAccuracy: true, timeout: 25000, maximumAge: 0 }
+  );
+}
+
+let currentAdoptCategory = 'all';
+
+const mockAdoptItems = [
+  { id: 1, name: 'Leo (Desi Puppy)', type: 'dog', breed: 'Indian Pariah / Indie', age: '3 months', location: 'Lajpat Nagar, Delhi', isFree: true, price: 0, icon: 'fa-dog', bg: '#d1fae5', color: 'var(--primary)' },
+  { id: 2, name: 'Milo (Ginger Kitten)', type: 'cat', breed: 'Ginger Tabby', age: '2 months', location: 'Bandra West, Mumbai', isFree: true, price: 0, icon: 'fa-cat', bg: '#fce7f3', color: '#ec4899' },
+  { id: 3, name: 'Rocky (Rescued Dog)', type: 'dog', breed: 'Labrador Mix', age: '1 year', location: 'Indiranagar, Bangalore', isFree: true, price: 0, icon: 'fa-dog', bg: '#d1fae5', color: 'var(--primary)' },
+  { id: 4, name: 'Pure Gir Cow & Calf', type: 'cow', breed: 'Gir Breed', age: '3 years', location: 'Karnal, Haryana', isFree: false, price: 45000, icon: 'fa-cow', bg: '#fef9c3', color: '#ca8a04' },
+  { id: 5, name: 'Golden Retriever Pup', type: 'dog', breed: 'KCI Certified', age: '45 days', location: 'Sector 62, Noida', isFree: false, price: 18000, icon: 'fa-shield-dog', bg: '#e0f2fe', color: '#0284c7' },
+  { id: 6, name: 'High Yield Sahiwal Cow', type: 'cow', breed: 'Sahiwal Cattle', age: '4 years', location: 'Rohtak, Punjab', isFree: false, price: 55000, icon: 'fa-cow', bg: '#fef9c3', color: '#ca8a04' },
+  { id: 7, name: 'Persian Kitten (White)', type: 'cat', breed: 'Persian Longhair', age: '2.5 months', location: 'Vasant Kunj, Delhi', isFree: false, price: 12000, icon: 'fa-cat', bg: '#fce7f3', color: '#ec4899' },
+  { id: 8, name: 'Desi Calf (Male)', type: 'cow', breed: 'Local Desi', age: '6 months', location: 'Jamui, Bihar', isFree: true, price: 0, icon: 'fa-cow', bg: '#fef9c3', color: '#ca8a04' }
+];
+
+function selectAdoptCategory(cat, btnElem) {
+  currentAdoptCategory = cat;
+  document.querySelectorAll('.pill-chip').forEach(b => b.classList.remove('active'));
+  if (btnElem) btnElem.classList.add('active');
+  renderAdoptListingsUI();
+}
+
+function filterAdoptListingsUI() {
+  renderAdoptListingsUI();
+}
+
+function renderAdoptListingsUI() {
+  const container = document.getElementById('adoptListingsingsContainer');
+  if (!container) return;
+
+  const searchInput = document.getElementById('adoptSearchInput');
+  const query = searchInput ? searchInput.value.toLowerCase().trim() : '';
+
+  const filtered = mockAdoptItems.filter(item => {
+    const matchesCat = currentAdoptCategory === 'all' ||
+      (currentAdoptCategory === 'other' ? (item.type !== 'dog' && item.type !== 'cat' && item.type !== 'cow') : item.type === currentAdoptCategory);
+
+    const matchesQuery = !query ||
+      item.name.toLowerCase().includes(query) ||
+      item.breed.toLowerCase().includes(query) ||
+      item.type.toLowerCase().includes(query) ||
+      item.location.toLowerCase().includes(query);
+
+    return matchesCat && matchesQuery;
+  });
+
+  const freeItems = filtered.filter(i => i.isFree);
+  const breederItems = filtered.filter(i => !i.isFree);
+
+  if (filtered.length === 0) {
+    container.innerHTML = `
+      <div style="text-align:center; padding:30px; background:white; border-radius:12px; border:1px solid var(--border);">
+        <i class="fa-solid fa-paw" style="font-size:32px; color:#cbd5e1; margin-bottom:8px;"></i>
+        <h5 style="font-size:14px; font-weight:bold; color:#475569;">No animals found matching search</h5>
+        <p style="font-size:11px; color:#94a3b8; margin-top:4px;">Try searching for "dog", "cow", "cat", or clear filters.</p>
+      </div>
+    `;
+    return;
+  }
+
+  let html = '';
+
+  if (freeItems.length > 0) {
+    html += `
+      <div style="margin-bottom:18px;">
+        <h5 style="font-size:14px; font-weight:800; color:#065f46; margin-bottom:8px; display:flex; align-items:center; gap:6px;">
+          <i class="fa-solid fa-heart" style="color:#10b981;"></i> Free Adoption (${freeItems.length})
+        </h5>
+        <div class="quick-grid" style="grid-template-columns:1fr 1fr;">
+          ${freeItems.map(item => `
+            <div class="result-card" style="margin:0; padding:10px; cursor:pointer;" onclick="alert('Viewing listing for ${item.name}')">
+              <div style="height:70px; background:${item.bg}; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:32px; color:${item.color}; margin-bottom:8px;">
+                <i class="fa-solid ${item.icon}"></i>
+              </div>
+              <span class="pill safe" style="font-weight:800; font-size:9px;">FREE ADOPTION</span>
+              <h6 style="font-size:12px; font-weight:bold; margin-top:4px; margin-bottom:2px;">${item.name}</h6>
+              <p style="font-size:10px; color:var(--text-secondary); margin-bottom:2px;">${item.breed} • ${item.age}</p>
+              <p style="font-size:9px; color:#64748b;">📍 ${item.location}</p>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `;
+  }
+
+  if (breederItems.length > 0) {
+    html += `
+      <div style="margin-bottom:18px;">
+        <h5 style="font-size:14px; font-weight:800; color:#1e293b; margin-bottom:8px; display:flex; align-items:center; gap:6px;">
+          <i class="fa-solid fa-award" style="color:#0284c7;"></i> Buy from Verified Breeders (${breederItems.length})
+        </h5>
+        <div class="quick-grid" style="grid-template-columns:1fr 1fr;">
+          ${breederItems.map(item => `
+            <div class="result-card" style="margin:0; padding:10px; border-top:3px solid #0284c7; cursor:pointer;" onclick="alert('Viewing listing for ${item.name}')">
+              <div style="height:70px; background:${item.bg}; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:32px; color:${item.color}; margin-bottom:8px;">
+                <i class="fa-solid ${item.icon}"></i>
+              </div>
+              <h6 style="font-size:12px; font-weight:bold; margin-bottom:2px;">${item.name}</h6>
+              <div style="font-size:14px; font-weight:900; color:#0284c7; margin-bottom:4px;">${item.price > 0 ? '₹' + item.price.toLocaleString('en-IN') : 'Price on Request'}</div>
+              <p style="font-size:10px; color:var(--text-secondary); margin-bottom:2px;">${item.breed} • ${item.age}</p>
+              <p style="font-size:9px; color:#64748b;">📍 ${item.location}</p>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `;
+  }
+
+  container.innerHTML = html;
 }
 
 function handleAudioSummaryClick() {
