@@ -337,7 +337,19 @@ select {
 .app-bar-actions {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
+}
+
+.header-lang-select {
+  background: var(--primary-container);
+  color: var(--on-primary-container);
+  border: 1px solid var(--primary-light);
+  padding: 4px 6px;
+  border-radius: 8px;
+  font-size: 10px;
+  font-weight: 800;
+  cursor: pointer;
+  outline: none;
 }
 
 .sos-mini-btn {

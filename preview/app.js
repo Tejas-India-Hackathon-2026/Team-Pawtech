@@ -146,9 +146,13 @@ function changeLanguage(langCode) {
 
 function switchRole(roleName, btn) {
   currentRole = roleName;
-  document.querySelectorAll('.role-pill').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-  document.getElementById('userRoleTag').innerText = roleName === 'User' ? 'Pet Parent' : roleName;
+  if (btn) {
+    document.querySelectorAll('.role-pill').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+  }
+  const roleDisplay = roleName === 'User' ? 'Pet Parent' : (roleName === 'Seller' ? 'Breeder/Seller' : (roleName === 'NGO' ? 'Rescue NGO' : roleName));
+  const tagElem = document.getElementById('userRoleTag');
+  if (tagElem) tagElem.innerText = roleDisplay;
   renderScreen();
 }
 

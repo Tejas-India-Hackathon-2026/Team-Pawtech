@@ -140,7 +140,7 @@ class PashuAppBar extends ConsumerWidget implements PreferredSizeWidget {
                       ),
                     ),
                     Text(
-                      'AI Animal Care & Rescue',
+                      AppLanguages.get('tagline', currentLocale.languageCode),
                       style: AppTypography.labelSmall.copyWith(
                         fontSize: 10,
                         color: AppColors.primary,
