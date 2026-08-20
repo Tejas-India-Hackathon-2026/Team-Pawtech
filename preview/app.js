@@ -1295,7 +1295,7 @@ function askPreset(promptText) {
   }
 }
 
-function sendChatMessage() {
+async function sendChatMessage() {
   const input = document.getElementById('chatInput');
   const text = input ? input.value.trim() : '';
   if (!text) return;
@@ -1307,8 +1307,43 @@ function sendChatMessage() {
   }
   if (input) input.value = '';
 
-  setTimeout(() => {
-    let reply = "Namaste! For animal care: keep the animal hydrated and cool. Never give human painkillers (Paracetamol/Crocin) as they are toxic to pets. For minor wounds, clean gently with Betadine solution.";
+  const thinkingId = 'thinking_' + Date.now();
+  if (box) {
+    box.innerHTML += `<div class="chat-bubble ai" id="${thinkingId}"><i class="fa-solid fa-spinner fa-spin"></i> Pashu Mitra AI is thinking...</div>`;
+    box.scrollTop = box.scrollHeight;
+  }
+
+  let reply = '';
+  const geminiApiKey = (window.VITE_GEMINI_API_KEY || window.GEMINI_API_KEY || '').trim();
+
+  if (geminiApiKey && !geminiApiKey.includes('your-gemini')) {
+    try {
+      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{
+            parts: [{
+              text: `You are Pashu Mitra (पशु मित्र), an expert AI animal welfare and veterinary assistant for dogs, cats, cattle, birds, and pets in India. Respond concisely and clearly in simple language. User Query: ${text}`
+            }]
+          }]
+        })
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        if (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts) {
+          reply = data.candidates[0].content.parts[0].text;
+          reply = reply.replace(/\n/g, '<br>');
+        }
+      }
+    } catch (e) {
+      console.warn('Gemini API fetch error:', e);
+    }
+  }
+
+  if (!reply) {
+    reply = "Namaste! For animal care: keep the animal hydrated and cool. Never give human painkillers (Paracetamol/Crocin) as they are toxic to pets. For minor wounds, clean gently with Betadine solution.";
     const lower = text.toLowerCase();
     if (lower.includes('vaccin') || lower.includes('chart')) {
       reply = "Core Indian Dog Vaccination Schedule:<br>• 6-8 Weeks: Puppy DP (Distemper/Parvo)<br>• 10-12 Weeks: 7-in-1 Combination (DHPPiL)<br>• 14-16 Weeks: Anti-Rabies Vaccine (ARV)<br>• Annual Booster: Every 12 months.";
@@ -1317,11 +1352,13 @@ function sendChatMessage() {
     } else if (lower.includes('cow') || lower.includes('lumpy') || lower.includes('cattle')) {
       reply = "Cattle Health & Lumpy Skin Guidance:<br>1. Isolate affected cattle immediately.<br>2. Fumigate shed with dry neem leaves.<br>3. Provide electrolyte water and mineral mixture (50g/day).<br>4. Contact local Govt. Veterinary Officer for Goat Pox vaccination.";
     }
-    if (box) {
-      box.innerHTML += `<div class="chat-bubble ai">${reply}</div>`;
-      box.scrollTop = box.scrollHeight;
-    }
-  }, 600);
+  }
+
+  const thinkingBubble = document.getElementById(thinkingId);
+  if (thinkingBubble) {
+    thinkingBubble.innerHTML = reply;
+    if (box) box.scrollTop = box.scrollHeight;
+  }
 }
 
 function startMicRecording(targetInputId = 'symptomText', micBtnId = 'symptomMicBtn') {

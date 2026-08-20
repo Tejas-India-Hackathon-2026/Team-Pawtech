@@ -1,5 +1,8 @@
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
+import '../../../../core/config/app_config.dart';
 import '../models/chat_message.dart';
 import '../../../../core/services/voice_service.dart';
 
@@ -63,22 +66,62 @@ class AiAssistantNotifier extends StateNotifier<AiAssistantState> {
       isThinking: true,
     );
 
-    // AI intelligent answer generation
-    await Future.delayed(const Duration(milliseconds: 1000));
+    String reply = '';
 
-    String reply =
-        'For animal first aid, always ensure the animal is placed in a cool, ventilated area. Never give human paracetamol/Crocin to dogs or cats as it causes liver failure. Clean superficial wounds with 5% povidone iodine (Betadine). If vomiting or bleeding continues, consult a registered veterinarian or broadcast an SOS in the Find Help section.';
+    if (AppConfig.geminiApiKey.isNotEmpty &&
+        !AppConfig.geminiApiKey.contains('your-gemini')) {
+      try {
+        final uri = Uri.parse(
+          'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${AppConfig.geminiApiKey}',
+        );
 
-    final query = text.toLowerCase();
-    if (query.contains('vaccin') || query.contains('teeka') || query.contains('rabies')) {
+        final response = await http.post(
+          uri,
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({
+            'contents': [
+              {
+                'parts': [
+                  {
+                    'text':
+                        'You are Pashu Mitra (पशु मित्र), an expert AI animal welfare and veterinary assistant for dogs, cats, cattle, birds, and pets in India. Respond concisely and clearly in simple language (or in Hindi if queried in Hindi). Query: $text'
+                  }
+                ]
+              }
+            ]
+          }),
+        ).timeout(const Duration(seconds: 12));
+
+        if (response.statusCode == 200) {
+          final Map<String, dynamic> bodyData = jsonDecode(response.body);
+          final candidates = bodyData['candidates'] as List<dynamic>?;
+          if (candidates != null && candidates.isNotEmpty) {
+            final parts = candidates[0]['content']['parts'] as List<dynamic>?;
+            if (parts != null && parts.isNotEmpty) {
+              reply = parts[0]['text'] as String;
+            }
+          }
+        }
+      } catch (e) {
+        print('[Gemini API] Query error: $e');
+      }
+    }
+
+    if (reply.isEmpty) {
       reply =
-          'Core Vaccination Schedule for Dogs in India:\n1. 6-8 Weeks: Puppy DP (Distemper + Parvo)\n2. 10-12 Weeks: 7-in-1 / 9-in-1 (DHPPiL)\n3. 14-16 Weeks: 7-in-1 Booster + Anti-Rabies Vaccine (ARV)\n4. Annual Booster: 1x 7-in-1 and 1x Anti-Rabies every single year.';
-    } else if (query.contains('cow') || query.contains('cattle') || query.contains('gaay') || query.contains('lumpy')) {
-      reply =
-          'For Cattle & Dairy care: Ensure daily mineral mixture (50g/day), clean drinking water (70-80 L/day), and green fodder. Watch out for Lumpy Skin Disease (nodules on skin with fever) — isolate affected cattle immediately and notify local animal husbandry dispensary for goat pox vaccination.';
-    } else if (query.contains('dog food') || query.contains('diet') || query.contains('feed')) {
-      reply =
-          'Healthy Desi Dog Diet: Boiled eggs, boiled chicken/rice, curd (dahi), pumpkin, carrots, boiled lentils without excessive turmeric/chili. Toxic items to strictly avoid: Chocolate, cooked bones, onions, garlic, grapes/raisins, and sugary sweets.';
+          'For animal first aid, always ensure the animal is placed in a cool, ventilated area. Never give human paracetamol/Crocin to dogs or cats as it causes liver failure. Clean superficial wounds with 5% povidone iodine (Betadine). If vomiting or bleeding continues, consult a registered veterinarian or broadcast an SOS in the Find Help section.';
+
+      final query = text.toLowerCase();
+      if (query.contains('vaccin') || query.contains('teeka') || query.contains('rabies')) {
+        reply =
+            'Core Vaccination Schedule for Dogs in India:\n1. 6-8 Weeks: Puppy DP (Distemper + Parvo)\n2. 10-12 Weeks: 7-in-1 / 9-in-1 (DHPPiL)\n3. 14-16 Weeks: 7-in-1 Booster + Anti-Rabies Vaccine (ARV)\n4. Annual Booster: 1x 7-in-1 and 1x Anti-Rabies every single year.';
+      } else if (query.contains('cow') || query.contains('cattle') || query.contains('gaay') || query.contains('lumpy')) {
+        reply =
+            'For Cattle & Dairy care: Ensure daily mineral mixture (50g/day), clean drinking water (70-80 L/day), and green fodder. Watch out for Lumpy Skin Disease (nodules on skin with fever) — isolate affected cattle immediately and notify local animal husbandry dispensary for goat pox vaccination.';
+      } else if (query.contains('dog food') || query.contains('diet') || query.contains('feed')) {
+        reply =
+            'Healthy Desi Dog Diet: Boiled eggs, boiled chicken/rice, curd (dahi), pumpkin, carrots, boiled lentils without excessive turmeric/chili. Toxic items to strictly avoid: Chocolate, cooked bones, onions, garlic, grapes/raisins, and sugary sweets.';
+      }
     }
 
     final aiMsg = ChatMessage(
