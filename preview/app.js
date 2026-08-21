@@ -4939,3 +4939,4 @@ function renderCommunityScreenUI(container) {
   }
 })();
 // Commit 1: Core app state and theme configuration
+// Commit 2: Centralized i18n translation system
