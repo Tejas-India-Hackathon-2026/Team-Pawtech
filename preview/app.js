@@ -4968,3 +4968,4 @@ function renderCommunityScreenUI(container) {
 // Commit 33: OpenStreetMap Overpass API integration
 // Commit 34: Vet search filtering by name & city
 // Commit 35: Vet category filter chips
+// Commit 36: 24x7 emergency shelter filter pill
