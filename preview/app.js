@@ -4971,3 +4971,4 @@ function renderCommunityScreenUI(container) {
 // Commit 36: 24x7 emergency shelter filter pill
 // Commit 37: Geolocation distance calculation in km
 // Commit 38: Direct telephone dialing links
+// Commit 39: Google Maps directions action links
