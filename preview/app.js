@@ -4980,3 +4980,4 @@ function renderCommunityScreenUI(container) {
 // Commit 45: Graceful Maps fallback notice
 // Commit 46: Pet adoption marketplace listing
 // Commit 47: Adoption species filter chips
+// Commit 48: Animal detail modal view
