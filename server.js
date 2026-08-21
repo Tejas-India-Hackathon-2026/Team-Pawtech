@@ -461,3 +461,5 @@ server.listen(PORT, () => {
 // Commit 60: Node.js backend server with live .env hot reloading
 
 // PashuRakshak Server Gateway Diagnostics Active
+
+/** JSDoc: POST /api/identify-animal JSON payload definition */
