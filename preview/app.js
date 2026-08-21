@@ -4951,3 +4951,4 @@ function renderCommunityScreenUI(container) {
 // Commit 11: Image upload and camera capture handlers
 // Commit 12: File size and format validation
 // Commit 13: Image preview card rendering
+// Commit 14: Analyzing spinner state
