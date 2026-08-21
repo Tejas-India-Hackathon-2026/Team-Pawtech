@@ -293,3 +293,4 @@ server.listen(PORT, () => {
   console.log(`================================================================`);
 });
 // Commit 15: Gemini 1.5 Flash Vision backend endpoint
+// Commit 16: Multimodal inlineData payload parser
