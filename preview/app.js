@@ -5100,3 +5100,5 @@ function renderCommunityScreenUI(container) {
 // Audio Summary: Speech Synthesis Voice Selector
 
 // UI Utility: Toast Notification Queue Manager
+
+// VIP Membership: Tier Feature Comparison Matrix
