@@ -465,3 +465,5 @@ server.listen(PORT, () => {
 /** JSDoc: POST /api/identify-animal JSON payload definition */
 
 // Documentation: Real-time .env Hot-Reloading Gateway
+
+// Config: Google Maps SDK Fallback Gateway
