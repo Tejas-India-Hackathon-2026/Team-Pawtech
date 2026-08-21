@@ -4956,3 +4956,4 @@ function renderCommunityScreenUI(container) {
 // Commit 19: Species identification result card
 // Commit 20: Food guidelines & safety precautions
 // Commit 21: iNaturalist fallback taxonomy dataset
+// Commit 22: AI uncertainty warning disclaimer
