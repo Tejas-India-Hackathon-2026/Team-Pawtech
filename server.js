@@ -178,7 +178,13 @@ const server = http.createServer(async (req, res) => {
           return;
         }
 
-        const systemInstruction = "You are Pashu Mitra AI, an empathetic Indian veterinary and animal welfare assistant. Provide expert, concise advice on pet care, stray animal rescue, nutrition, vaccination schedules, and preventive care. For medical emergencies (bleeding, poisoning, seizures, fractures, trauma), clearly advise contacting a qualified veterinarian or emergency shelter immediately rather than presenting AI output as a medical diagnosis.";
+        let systemInstruction = "You are Pashu Mitra AI, an empathetic Indian veterinary and animal welfare assistant. Provide expert, concise advice on pet care, stray animal rescue, nutrition, vaccination schedules, and preventive care. For medical emergencies (bleeding, poisoning, seizures, fractures, trauma), clearly advise contacting a qualified veterinarian or emergency shelter immediately rather than presenting AI output as a medical diagnosis.";
+
+        if (body.imageContext && (body.imageContext.animal_name || body.imageContext.common_name)) {
+          const aName = body.imageContext.animal_name || body.imageContext.common_name;
+          const sName = body.imageContext.scientific_name || '';
+          systemInstruction += `\n\nACTIVE IMAGE CONTEXT: The user is asking about an uploaded animal photo identified as "${aName}" (${sName}). Focus answers directly on this identified animal and the image context.`;
+        }
 
         const contents = [];
         const history = body.history;
@@ -237,6 +243,7 @@ const server = http.createServer(async (req, res) => {
           res.writeHead(400, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({
             success: false,
+            identified: false,
             errorCode: "IMAGE_UPLOAD_ERROR",
             message: "No image payload received. Please select an image file."
           }));
@@ -247,6 +254,7 @@ const server = http.createServer(async (req, res) => {
           res.writeHead(401, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({
             success: false,
+            identified: false,
             errorCode: "GEMINI_KEY_MISSING",
             message: "Gemini API Key is unconfigured in .env file.",
             common_name: "Identification Uncertain (GEMINI_API_KEY Required)",
@@ -255,11 +263,14 @@ const server = http.createServer(async (req, res) => {
             confidence: 0.0,
             is_uncertain: true,
             needs_expert_verification: true,
+            expert_verification_required: true,
             needs_professional_verification: true,
             visual_evidence: ["GEMINI_API_KEY is missing from server environment"],
+            basic_information: "Please configure GEMINI_API_KEY in the project .env file to enable live AI vision species identification.",
             general_care: "Paste your GEMINI_API_KEY in the project .env file to enable live AI vision species identification.",
             care: ["Paste your GEMINI_API_KEY in the project .env file"],
             food_guidance: "Live image recognition requires GEMINI_API_KEY.",
+            food: ["Live image recognition requires GEMINI_API_KEY."],
             safety_guidance: "Always consult a licensed veterinarian.",
             uncertainty_warning: "Unable to run live AI vision analysis. Please add your GEMINI_API_KEY to the .env file."
           }));
@@ -267,35 +278,43 @@ const server = http.createServer(async (req, res) => {
         }
 
         const cleanData = imageBase64.replace(/^data:image\/\w+;base64,/, '');
-        const promptText = `You are an expert zoologist and animal identification AI assistant.
-CRITICAL INSTRUCTION: Analyze ONLY the provided image itself. Do NOT use the filename, previous identification result, cached state, UI text, mock data, or example animal. Focus strictly on the visual evidence visible in the image bytes (ears, snout, coat, paws, wings, beak, body structure).
+        const promptText = `You are PashuRakshak's multimodal animal-care assistant.
+CRITICAL INSTRUCTION: Analyze ONLY the provided image itself. Do NOT infer or guess from filenames, UI text, or example data. Focus strictly on the visual evidence visible in the image bytes (ears, snout, coat, paws, wings, beak, body structure).
 
-You MUST respond ONLY with valid JSON using this exact format (no markdown fences if possible, or plain raw JSON):
+You MUST respond ONLY with valid JSON using this exact structure (no markdown fences around JSON):
 {
+  "identified": true,
   "animal_name": "Common species name (e.g. Rabbit, Domestic Short Hair Cat, Indian Street Dog, Rose-ringed Parakeet, Zebu Cow, Horse, Snake, etc.)",
   "scientific_name": "Binomial scientific name (e.g. Oryctolagus cuniculus)",
+  "breed_or_type": "Breed or type classification",
   "confidence": 0.94,
-  "species_group": "Taxonomic group (e.g. Mammal, Bird, Reptile, Amphibian)",
   "classification": "Domestic or Wild",
   "visual_evidence": ["Key visual feature 1 visible in image", "Key visual feature 2 visible in image"],
+  "basic_information": "Concise overview of the identified subject",
   "care": ["Care & housing instruction 1", "Care & housing instruction 2"],
   "food": ["Diet & nutrition guideline 1", "Diet & nutrition guideline 2"],
-  "safety": "Safety precautions for handling or approaching",
-  "needs_expert_verification": false
+  "habitat": "Natural or domestic habitat",
+  "common_health_concerns": ["Health concern 1", "Health concern 2"],
+  "safety_guidance": "Safety precautions for handling or approaching",
+  "expert_verification_required": false
 }
 
 If the image is blurry, cropped, too dark, corrupted, or does NOT contain a clearly recognizable animal, return:
 {
-  "animal_name": "Unknown / Unclear Image",
+  "identified": false,
+  "animal_name": "Unknown",
   "scientific_name": "",
+  "breed_or_type": "",
   "confidence": 0.0,
-  "species_group": "Uncertain",
   "classification": "Uncertain",
   "visual_evidence": ["Visual evidence insufficient for identification"],
+  "basic_information": "Unable to confidently identify the subject from this image.",
   "care": ["Please upload a clearer, well-lit photo of the animal"],
   "food": ["Unable to determine diet"],
-  "safety": "Consult a veterinarian or wildlife expert for assistance",
-  "needs_expert_verification": true
+  "habitat": "Uncertain",
+  "common_health_concerns": [],
+  "safety_guidance": "Consult a veterinarian or wildlife expert for assistance",
+  "expert_verification_required": true
 }`;
 
         const payload = {
@@ -317,25 +336,32 @@ If the image is blurry, cropped, too dark, corrupted, or does NOT contain a clea
 
             const animalName = parsed.animal_name || parsed.common_name || "Unknown";
             const confidenceVal = typeof parsed.confidence === 'number' ? parsed.confidence : 0.9;
-            const isLowConf = parsed.needs_expert_verification === true || confidenceVal < 0.7;
+            const isLowConf = parsed.expert_verification_required === true || parsed.identified === false || confidenceVal < 0.7;
 
             const normalized = {
               success: true,
+              identified: parsed.identified !== false && !isLowConf,
               common_name: animalName,
               animal_name: animalName,
               scientific_name: parsed.scientific_name || "",
+              breed_or_type: parsed.breed_or_type || parsed.breed || "",
               confidence: confidenceVal,
               species_group: parsed.species_group || "Mammal",
               classification: parsed.classification || (parsed.domestic_or_wild || "Domestic"),
               is_domestic: String(parsed.classification || parsed.domestic_or_wild || '').toLowerCase().includes('domestic'),
               visual_evidence: parsed.visual_evidence || [],
+              basic_information: parsed.basic_information || '',
               general_care: Array.isArray(parsed.care) ? parsed.care.join('. ') : (parsed.care || parsed.general_care || ''),
               care: Array.isArray(parsed.care) ? parsed.care : [parsed.care || ''],
               food_needs: Array.isArray(parsed.food) ? parsed.food.join('. ') : (parsed.food || parsed.food_needs || ''),
               food: Array.isArray(parsed.food) ? parsed.food : [parsed.food || ''],
-              safety_guidance: parsed.safety || parsed.safety_guidance || '',
-              safety: parsed.safety || parsed.safety_guidance || '',
+              habitat: parsed.habitat || '',
+              common_health_concerns: parsed.common_health_concerns || [],
+              safety_guidance: parsed.safety_guidance || parsed.safety || '',
+              safety: parsed.safety_guidance || parsed.safety || '',
+              expert_verification_required: isLowConf,
               needs_expert_verification: isLowConf,
+              needs_professional_verification: isLowConf,
               is_uncertain: isLowConf
             };
 
@@ -347,6 +373,7 @@ If the image is blurry, cropped, too dark, corrupted, or does NOT contain a clea
             res.writeHead(500, { 'Content-Type': 'application/json' });
             res.end(JSON.stringify({
               success: false,
+              identified: false,
               errorCode: "INVALID_GEMINI_RESPONSE",
               message: "Gemini response parsing error.",
               error: pErr.message
@@ -362,6 +389,7 @@ If the image is blurry, cropped, too dark, corrupted, or does NOT contain a clea
           res.writeHead(geminiResult.status || 500, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({
             success: false,
+            identified: false,
             errorCode: errCode,
             message: geminiResult.error || "Gemini vision analysis failed."
           }));
@@ -372,6 +400,7 @@ If the image is blurry, cropped, too dark, corrupted, or does NOT contain a clea
         res.writeHead(500, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({
           success: false,
+          identified: false,
           errorCode: "BACKEND_CONNECTION_ERROR",
           message: err.message
         }));

@@ -701,7 +701,7 @@ function renderScreen() {
 
       <!-- Action Buttons Bar: Scan Again, Save Result, View History -->
       <div style="display:flex; gap:6px; margin-bottom:10px;">
-        <button style="flex:1; padding:10px 6px; background:var(--primary); color:white; border:none; border-radius:10px; font-size:11px; font-weight:bold; cursor:pointer;" onclick="uploadedAnimalImageData=null; uploadedAnimalFileName=null; uploadedAnimalMimeType=null; animalScanResult=null; isAnalyzingState=false; uploadErrorText=null; navigateTo('identify');">
+        <button style="flex:1; padding:10px 6px; background:var(--primary); color:white; border:none; border-radius:10px; font-size:11px; font-weight:bold; cursor:pointer;" onclick="uploadedAnimalImageData=null; uploadedAnimalFileName=null; uploadedAnimalMimeType=null; animalScanResult=null; isAnalyzingState=false; uploadErrorText=null; imageChatHistory=[]; navigateTo('identify');">
           <i class="fa-solid fa-rotate-left"></i> Scan Again
         </button>
         <button style="flex:1; padding:10px 6px; background:#0284c7; color:white; border:none; border-radius:10px; font-size:11px; font-weight:bold; cursor:pointer;" onclick="saveScanToHistory(animalScanResult, uploadedAnimalImageData); showToast('Result saved to History!');">
@@ -710,6 +710,35 @@ function renderScreen() {
         <button style="flex:1; padding:10px 6px; background:#475569; color:white; border:none; border-radius:10px; font-size:11px; font-weight:bold; cursor:pointer;" onclick="navigateTo('scan-history');">
           <i class="fa-solid fa-clock-rotate-left"></i> History
         </button>
+      </div>
+
+      <!-- Follow-Up Gemini Multimodal Image Chatbot Area -->
+      <div class="result-card" style="background:#f0fdf4; border-color:#bbf7d0; margin-bottom:10px;">
+        <h6 style="font-size:13px; font-weight:800; color:#166534; margin-bottom:4px;">
+          <i class="fa-solid fa-comments"></i> Ask Pashu Mitra AI about this image
+        </h6>
+        <p style="font-size:10px; color:#15803d; margin-bottom:8px;">
+          Ask follow-up questions about this identified <b>${r ? (r.animal_name || r.common_name || 'animal') : 'animal'}</b>
+        </p>
+
+        <!-- Suggested Preset Question Chips -->
+        <div style="display:flex; flex-wrap:wrap; gap:4px; margin-bottom:8px;">
+          <button style="padding:4px 8px; background:white; border:1px solid #86efac; border-radius:12px; font-size:10px; color:#166534; font-weight:bold; cursor:pointer;" onclick="sendImageFollowupChat('What should it eat?')">🌾 What should it eat?</button>
+          <button style="padding:4px 8px; background:white; border:1px solid #86efac; border-radius:12px; font-size:10px; color:#166534; font-weight:bold; cursor:pointer;" onclick="sendImageFollowupChat('How should I care for it?')">🩺 How should I care for it?</button>
+          <button style="padding:4px 8px; background:white; border:1px solid #86efac; border-radius:12px; font-size:10px; color:#166534; font-weight:bold; cursor:pointer;" onclick="sendImageFollowupChat('Is it domestic or wild?')">🐾 Is it domestic or wild?</button>
+          <button style="padding:4px 8px; background:white; border:1px solid #86efac; border-radius:12px; font-size:10px; color:#166534; font-weight:bold; cursor:pointer;" onclick="sendImageFollowupChat('What are common health concerns?')">⚠️ Health concerns?</button>
+        </div>
+
+        <!-- Messages Output Container -->
+        <div id="imageChatMessagesBox" style="max-height:160px; overflow-y:auto; margin-bottom:8px; display:flex; flex-direction:column; gap:6px;"></div>
+
+        <!-- Question Input Row -->
+        <div style="display:flex; gap:6px;">
+          <input type="text" id="imageChatInput" placeholder="Ask a question about this image..." style="flex:1; padding:8px 10px; border-radius:8px; border:1px solid #86efac; font-size:11px;" onkeydown="if(event.key==='Enter') sendImageFollowupChat()">
+          <button style="padding:8px 14px; background:#166534; color:white; border:none; border-radius:8px; font-size:11px; font-weight:bold; cursor:pointer;" onclick="sendImageFollowupChat()">
+            <i class="fa-solid fa-paper-plane"></i>
+          </button>
+        </div>
       </div>
 
       <!-- Integrated Check Animal Health Section -->
@@ -2691,6 +2720,68 @@ function escapeHtml(str) {
   return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
+let imageChatHistory = [];
+
+async function sendImageFollowupChat(promptOverride) {
+  const input = document.getElementById('imageChatInput');
+  const box = document.getElementById('imageChatMessagesBox');
+  const text = promptOverride || (input ? input.value.trim() : '');
+  if (!text) return;
+  if (input) input.value = '';
+
+  if (!box) return;
+
+  imageChatHistory.push({ role: 'user', text });
+
+  box.innerHTML = imageChatHistory.map(m => {
+    if (m.role === 'user') {
+      return `<div style="align-self:flex-end; background:#166534; color:white; padding:6px 10px; border-radius:10px; max-width:85%; font-size:11px;">${escapeHtml(m.text)}</div>`;
+    } else {
+      return `<div style="align-self:flex-start; background:white; color:#1e293b; padding:6px 10px; border-radius:10px; border:1px solid #cbd5e1; max-width:90%; font-size:11px; line-height:1.4;">${m.text}</div>`;
+    }
+  }).join('');
+  box.innerHTML += `<div id="imageThinkingIndicator" style="align-self:flex-start; color:#15803d; font-size:10px; font-weight:bold;"><i class="fa-solid fa-circle-notch fa-spin"></i> Pashu Mitra AI is analyzing question...</div>`;
+  box.scrollTop = box.scrollHeight;
+
+  try {
+    const baseUrl = (window.location && window.location.origin && window.location.origin !== 'null') ? window.location.origin : 'http://localhost:8080';
+    const res = await fetch(`${baseUrl}/api/ai/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        message: text,
+        imageContext: animalScanResult,
+        imageBase64: uploadedAnimalImageData,
+        history: imageChatHistory
+      })
+    });
+
+    const data = await res.json().catch(() => ({}));
+    const indicator = document.getElementById('imageThinkingIndicator');
+    if (indicator) indicator.remove();
+
+    if (res.ok && data.reply) {
+      const formatted = data.reply.replace(/\n/g, '<br>');
+      imageChatHistory.push({ role: 'ai', text: formatted });
+    } else {
+      imageChatHistory.push({ role: 'ai', text: `⚠️ <b>AI Notice:</b> ${data.reply || data.error || 'Gemini service unavailable.'}` });
+    }
+  } catch (err) {
+    const indicator = document.getElementById('imageThinkingIndicator');
+    if (indicator) indicator.remove();
+    imageChatHistory.push({ role: 'ai', text: '⚠️ <b>Network Error:</b> Could not connect to Gemini service.' });
+  }
+
+  box.innerHTML = imageChatHistory.map(m => {
+    if (m.role === 'user') {
+      return `<div style="align-self:flex-end; background:#166534; color:white; padding:6px 10px; border-radius:10px; max-width:85%; font-size:11px;">${escapeHtml(m.text)}</div>`;
+    } else {
+      return `<div style="align-self:flex-start; background:white; color:#1e293b; padding:6px 10px; border-radius:10px; border:1px solid #cbd5e1; max-width:90%; font-size:11px; line-height:1.4;">${m.text}</div>`;
+    }
+  }).join('');
+  box.scrollTop = box.scrollHeight;
+}
+
 function askPreset(promptText) {
   sendChatMessage(promptText);
 }
@@ -2717,10 +2808,11 @@ async function sendChatMessage(promptOverride) {
 
   let reply = '';
   let isError = false;
+  let res = null;
 
   try {
     const baseUrl = (window.location && window.location.origin && window.location.origin !== 'null') ? window.location.origin : 'http://localhost:8080';
-    const res = await fetch(`${baseUrl}/api/ai/chat`, {
+    res = await fetch(`${baseUrl}/api/ai/chat`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ message: text, history: history })
