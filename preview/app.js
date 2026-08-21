@@ -5088,3 +5088,5 @@ function renderCommunityScreenUI(container) {
 // State Persistence: LocalStorage Helpers
 
 // SOS Dispatch Logger: Timestamp Formatting
+
+// Overpass API: Bounding Box Filter Optimization
