@@ -4959,3 +4959,4 @@ function renderCommunityScreenUI(container) {
 // Commit 22: AI uncertainty warning disclaimer
 // Commit 23: Scan history logger with localStorage
 // Commit 24: Scan history list screen
+// Commit 25: Pashu Mitra AI chat interface
