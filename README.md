@@ -119,3 +119,5 @@ flutter run
 <!-- Setup Guide: Windows PowerShell Environment Setup -->
 
 <!-- Security: Server-side API Key Isolation Policy -->
+
+<!-- Community: Open Source Contribution Guidelines -->
