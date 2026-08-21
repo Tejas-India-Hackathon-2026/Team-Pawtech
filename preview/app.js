@@ -4945,3 +4945,4 @@ function renderCommunityScreenUI(container) {
 // Commit 5: Welcome hero & role switcher
 // Commit 6: Quick access grid cards
 // Commit 7: Emergency SOS rescue banner
+// Commit 8: Dynamic active alerts section
