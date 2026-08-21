@@ -295,3 +295,4 @@ server.listen(PORT, () => {
 // Commit 15: Gemini 1.5 Flash Vision backend endpoint
 // Commit 16: Multimodal inlineData payload parser
 // Commit 17: Structured species JSON parser
+// Commit 26: Server-side Gemini chat endpoint
