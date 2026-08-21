@@ -125,3 +125,5 @@ flutter run
 <!-- Architecture: SPA Client State Router -->
 
 <!-- Deployment: Node.js HTTP Server Configuration -->
+
+<!-- Release Notes: Version 2.5 Major Features & Fixes -->
