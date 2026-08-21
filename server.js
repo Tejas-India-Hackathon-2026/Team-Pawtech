@@ -473,3 +473,5 @@ server.listen(PORT, () => {
 // Schema Spec: Gemini 1.5 Flash Vision Response Object
 
 // Security: Sanitize JSON Parsing Tracebacks
+
+// Privacy: Event Tracking Schema
