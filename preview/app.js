@@ -4973,3 +4973,4 @@ function renderCommunityScreenUI(container) {
 // Commit 38: Direct telephone dialing links
 // Commit 39: Google Maps directions action links
 // Commit 40: Favorite vet bookmarking
+// Commit 41: Google Maps JS SDK dynamic loader
