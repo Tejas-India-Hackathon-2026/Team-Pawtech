@@ -4952,3 +4952,4 @@ function renderCommunityScreenUI(container) {
 // Commit 12: File size and format validation
 // Commit 13: Image preview card rendering
 // Commit 14: Analyzing spinner state
+// Commit 18: Species confidence score & uncertainty flagging
