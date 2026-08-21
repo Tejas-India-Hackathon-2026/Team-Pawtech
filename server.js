@@ -3,27 +3,54 @@ const fs = require('fs');
 const path = require('path');
 const url = require('url');
 
-const envPath = path.join(__dirname, '.env');
-
 function loadEnvVars() {
-  if (fs.existsSync(envPath)) {
-    try {
-      const envContent = fs.readFileSync(envPath, 'utf8');
-      envContent.split('\n').forEach(line => {
-        const trimmed = line.trim();
-        if (trimmed && !trimmed.startsWith('#') && trimmed.includes('=')) {
-          const idx = trimmed.indexOf('=');
-          const key = trimmed.substring(0, idx).trim();
-          const value = trimmed.substring(idx + 1).trim();
-          if (key) {
-            process.env[key] = value;
+  const possiblePaths = [
+    path.join(__dirname, '.env'),
+    path.join(__dirname, '.env.local'),
+    path.join(__dirname, '.env.development'),
+    path.join(__dirname, '.env.production')
+  ];
+
+  possiblePaths.forEach(p => {
+    if (fs.existsSync(p)) {
+      try {
+        const envContent = fs.readFileSync(p, 'utf8');
+        envContent.split('\n').forEach(line => {
+          const trimmed = line.trim();
+          if (trimmed && !trimmed.startsWith('#') && trimmed.includes('=')) {
+            const idx = trimmed.indexOf('=');
+            const key = trimmed.substring(0, idx).trim();
+            let value = trimmed.substring(idx + 1).trim();
+            if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
+              value = value.substring(1, value.length - 1);
+            }
+            if (key && value) {
+              process.env[key] = value;
+            }
           }
-        }
-      });
-    } catch (e) {
-      console.warn('[EnvLoader] Error reading .env:', e);
+        });
+      } catch (e) {
+        console.warn('[EnvLoader] Error reading:', p, e.message);
+      }
+    }
+  });
+}
+
+function getGeminiApiKey() {
+  const keys = [
+    process.env.GEMINI_API_KEY,
+    process.env.VITE_GEMINI_API_KEY,
+    process.env.GOOGLE_API_KEY,
+    process.env.GEMINI_KEY,
+    process.env.GOOGLE_GEMINI_API_KEY,
+    process.env.GEMINI_VISION_API_KEY
+  ];
+  for (const k of keys) {
+    if (k && k.trim().length > 10) {
+      return k.trim();
     }
   }
+  return null;
 }
 
 // Initial load
@@ -112,8 +139,9 @@ const server = http.createServer(async (req, res) => {
 
   // --- API ENDPOINTS ---
   if (pathname === '/api/config') {
-    const rawKey = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY || '';
-    const hasKey = !!rawKey && rawKey.trim().length > 10;
+    const rawKey = getGeminiApiKey();
+    const hasKey = !!rawKey;
+    console.log(`[ConfigDiagnostic] Gemini API key configured: ${hasKey}`);
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({
       googleMapsApiKey: process.env.VITE_GOOGLE_MAPS_API_KEY || '',
@@ -138,9 +166,9 @@ const server = http.createServer(async (req, res) => {
           return;
         }
 
-        const apiKey = (process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY || '').trim();
+        const apiKey = getGeminiApiKey();
 
-        if (!apiKey || apiKey.length < 10) {
+        if (!apiKey) {
           res.writeHead(401, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({
             status: 401,
@@ -193,33 +221,67 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  if (pathname === '/api/ai/analyze-image' && req.method === 'POST') {
+  if ((pathname === '/api/identify-animal' || pathname === '/api/ai/analyze-image') && req.method === 'POST') {
     let bodyStr = '';
     req.on('data', chunk => { bodyStr += chunk; });
     req.on('end', async () => {
       try {
         const body = JSON.parse(bodyStr || '{}');
-        const imageBase64 = body.imageBase64 || '';
+        const imageBase64 = body.imageBase64 || body.image || '';
         const mimeType = body.mimeType || 'image/jpeg';
-        const apiKey = (process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY || '').trim();
+        const apiKey = getGeminiApiKey();
 
-        if (apiKey && apiKey.length > 10 && imageBase64) {
-          const cleanData = imageBase64.replace(/^data:image\/\w+;base64,/, '');
-          const promptText = `You are an expert zoologist and animal identification AI assistant.
-CRITICAL INSTRUCTION: Analyze ONLY the provided image itself. Do NOT infer or guess from filenames, UI text, or example data. Examine visual evidence visible in the image (ears, snout, coat, paws, wings, beak, body structure).
+        console.log(`[AnimalID] Request received — Image present: ${!!imageBase64}, MIME: ${mimeType}, Size: ${imageBase64 ? imageBase64.length : 0} bytes, Gemini API key configured: ${!!apiKey}`);
 
-You MUST respond ONLY with valid JSON using this exact format (no markdown fences around JSON if possible, or simple raw JSON):
+        if (!imageBase64) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({
+            success: false,
+            errorCode: "IMAGE_UPLOAD_ERROR",
+            message: "No image payload received. Please select an image file."
+          }));
+          return;
+        }
+
+        if (!apiKey) {
+          res.writeHead(401, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({
+            success: false,
+            errorCode: "GEMINI_KEY_MISSING",
+            message: "Gemini API Key is unconfigured in .env file.",
+            common_name: "Identification Uncertain (GEMINI_API_KEY Required)",
+            animal_name: "Unknown / Requires GEMINI_API_KEY",
+            scientific_name: "Unconfigured Backend Vision AI",
+            confidence: 0.0,
+            is_uncertain: true,
+            needs_expert_verification: true,
+            needs_professional_verification: true,
+            visual_evidence: ["GEMINI_API_KEY is missing from server environment"],
+            general_care: "Paste your GEMINI_API_KEY in the project .env file to enable live AI vision species identification.",
+            care: ["Paste your GEMINI_API_KEY in the project .env file"],
+            food_guidance: "Live image recognition requires GEMINI_API_KEY.",
+            safety_guidance: "Always consult a licensed veterinarian.",
+            uncertainty_warning: "Unable to run live AI vision analysis. Please add your GEMINI_API_KEY to the .env file."
+          }));
+          return;
+        }
+
+        const cleanData = imageBase64.replace(/^data:image\/\w+;base64,/, '');
+        const promptText = `You are an expert zoologist and animal identification AI assistant.
+CRITICAL INSTRUCTION: Analyze ONLY the provided image itself. Do NOT use the filename, previous identification result, cached state, UI text, mock data, or example animal. Focus strictly on the visual evidence visible in the image bytes (ears, snout, coat, paws, wings, beak, body structure).
+
+You MUST respond ONLY with valid JSON using this exact format (no markdown fences if possible, or plain raw JSON):
 {
-  "animal_name": "Common species name (e.g. Rabbit, Domestic Cat, Indian Street Dog, Rose-ringed Parakeet, Cow, Horse, Snake, etc.)",
+  "animal_name": "Common species name (e.g. Rabbit, Domestic Short Hair Cat, Indian Street Dog, Rose-ringed Parakeet, Zebu Cow, Horse, Snake, etc.)",
   "scientific_name": "Binomial scientific name (e.g. Oryctolagus cuniculus)",
-  "confidence": 0.92,
+  "confidence": 0.94,
   "species_group": "Taxonomic group (e.g. Mammal, Bird, Reptile, Amphibian)",
-  "domestic_or_wild": "Domestic or Wild",
-  "visual_evidence": ["Key visual feature 1", "Key visual feature 2"],
-  "basic_care": ["Care instruction 1", "Care instruction 2"],
-  "food_guidance": ["Diet guidance 1", "Diet guidance 2"],
-  "safety_guidance": "Safety precautions for handling or approaching",
-  "needs_professional_verification": false
+  "classification": "Domestic or Wild",
+  "visual_evidence": ["Key visual feature 1 visible in image", "Key visual feature 2 visible in image"],
+  "care": ["Care & housing instruction 1", "Care & housing instruction 2"],
+  "food": ["Diet & nutrition guideline 1", "Diet & nutrition guideline 2"],
+  "safety": "Safety precautions for handling or approaching",
+  "needs_expert_verification": false
 }
 
 If the image is blurry, cropped, too dark, corrupted, or does NOT contain a clearly recognizable animal, return:
@@ -228,74 +290,91 @@ If the image is blurry, cropped, too dark, corrupted, or does NOT contain a clea
   "scientific_name": "",
   "confidence": 0.0,
   "species_group": "Uncertain",
-  "domestic_or_wild": "Uncertain",
+  "classification": "Uncertain",
   "visual_evidence": ["Visual evidence insufficient for identification"],
-  "basic_care": ["Please upload a clearer, well-lit photo of the animal"],
-  "food_guidance": ["Unable to determine diet"],
-  "safety_guidance": "Consult a veterinarian or wildlife expert for assistance",
-  "needs_professional_verification": true
+  "care": ["Please upload a clearer, well-lit photo of the animal"],
+  "food": ["Unable to determine diet"],
+  "safety": "Consult a veterinarian or wildlife expert for assistance",
+  "needs_expert_verification": true
 }`;
 
-          const payload = {
-            contents: [
-              {
-                parts: [
-                  { text: promptText },
-                  { inlineData: { mimeType, data: cleanData } }
-                ]
-              }
-            ]
-          };
-
-          const geminiResult = await callGeminiApi(payload, apiKey);
-          if (geminiResult && geminiResult.text) {
-            try {
-              const cleanedText = geminiResult.text.replace(/```json/g, '').replace(/```/g, '').trim();
-              const parsed = JSON.parse(cleanedText);
-              
-              // Normalize keys for UI compatibility
-              const normalized = {
-                common_name: parsed.animal_name || parsed.common_name || "Unknown",
-                animal_name: parsed.animal_name || parsed.common_name || "Unknown",
-                scientific_name: parsed.scientific_name || "",
-                confidence: typeof parsed.confidence === 'number' ? parsed.confidence : 0.9,
-                species_group: parsed.species_group || "Mammal",
-                is_domestic: (parsed.domestic_or_wild || '').toLowerCase().includes('domestic'),
-                visual_evidence: parsed.visual_evidence || [],
-                general_care: Array.isArray(parsed.basic_care) ? parsed.basic_care.join('. ') : (parsed.basic_care || parsed.general_care || ''),
-                food_needs: Array.isArray(parsed.food_guidance) ? parsed.food_guidance.join('. ') : (parsed.food_guidance || parsed.food_needs || ''),
-                safety_guidance: parsed.safety_guidance || '',
-                needs_professional_verification: parsed.needs_professional_verification === true || (parsed.confidence || 0) < 0.7,
-                is_uncertain: parsed.needs_professional_verification === true || (parsed.confidence || 0) < 0.7
-              };
-
-              res.writeHead(200, { 'Content-Type': 'application/json' });
-              res.end(JSON.stringify(normalized));
-              return;
-            } catch (pErr) {
-              console.warn('[VisionJSON] Error parsing Gemini JSON output:', pErr);
+        const payload = {
+          contents: [
+            {
+              parts: [
+                { text: promptText },
+                { inlineData: { mimeType, data: cleanData } }
+              ]
             }
+          ]
+        };
+
+        const geminiResult = await callGeminiApi(payload, apiKey);
+        if (geminiResult && geminiResult.ok && geminiResult.text) {
+          try {
+            const cleanedText = geminiResult.text.replace(/```json/g, '').replace(/```/g, '').trim();
+            const parsed = JSON.parse(cleanedText);
+
+            const animalName = parsed.animal_name || parsed.common_name || "Unknown";
+            const confidenceVal = typeof parsed.confidence === 'number' ? parsed.confidence : 0.9;
+            const isLowConf = parsed.needs_expert_verification === true || confidenceVal < 0.7;
+
+            const normalized = {
+              success: true,
+              common_name: animalName,
+              animal_name: animalName,
+              scientific_name: parsed.scientific_name || "",
+              confidence: confidenceVal,
+              species_group: parsed.species_group || "Mammal",
+              classification: parsed.classification || (parsed.domestic_or_wild || "Domestic"),
+              is_domestic: String(parsed.classification || parsed.domestic_or_wild || '').toLowerCase().includes('domestic'),
+              visual_evidence: parsed.visual_evidence || [],
+              general_care: Array.isArray(parsed.care) ? parsed.care.join('. ') : (parsed.care || parsed.general_care || ''),
+              care: Array.isArray(parsed.care) ? parsed.care : [parsed.care || ''],
+              food_needs: Array.isArray(parsed.food) ? parsed.food.join('. ') : (parsed.food || parsed.food_needs || ''),
+              food: Array.isArray(parsed.food) ? parsed.food : [parsed.food || ''],
+              safety_guidance: parsed.safety || parsed.safety_guidance || '',
+              safety: parsed.safety || parsed.safety_guidance || '',
+              needs_expert_verification: isLowConf,
+              is_uncertain: isLowConf
+            };
+
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify(normalized));
+            return;
+          } catch (pErr) {
+            console.warn('[VisionJSON] Error parsing Gemini output:', pErr);
+            res.writeHead(500, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({
+              success: false,
+              errorCode: "INVALID_GEMINI_RESPONSE",
+              message: "Gemini response parsing error.",
+              error: pErr.message
+            }));
+            return;
           }
+        } else {
+          const errCode = geminiResult.status === 401 ? "GEMINI_AUTH_ERROR" :
+                          geminiResult.status === 403 ? "GEMINI_PERMISSION_ERROR" :
+                          geminiResult.status === 404 ? "GEMINI_MODEL_ERROR" :
+                          geminiResult.status === 429 ? "GEMINI_RATE_LIMIT" : "BACKEND_CONNECTION_ERROR";
+
+          res.writeHead(geminiResult.status || 500, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({
+            success: false,
+            errorCode: errCode,
+            message: geminiResult.error || "Gemini vision analysis failed."
+          }));
+          return;
         }
 
-        // Unconfigured API Key or API error fallback (NO HARDCODED FAKE SPECIES)
-        res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({
-          common_name: "Identification Uncertain (GEMINI_API_KEY Required)",
-          animal_name: "Unknown / Requires GEMINI_API_KEY",
-          scientific_name: "Unconfigured Backend Vision AI",
-          confidence: 0.0,
-          is_uncertain: true,
-          needs_professional_verification: true,
-          visual_evidence: ["Gemini 1.5 Vision API Key is unconfigured in .env"],
-          general_care: "Paste your GEMINI_API_KEY in the project .env file to run live AI vision identification on actual uploaded images.",
-          food_needs: "Live image recognition requires GEMINI_API_KEY.",
-          safety_guidance: "Always approach unfamiliar animals with caution. Consult a licensed veterinarian.",
-          uncertainty_warning: "Unable to run live AI vision analysis. Please add your GEMINI_API_KEY to the .env file."
-        }));
       } catch (err) {
         res.writeHead(500, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ error: err.message }));
+        res.end(JSON.stringify({
+          success: false,
+          errorCode: "BACKEND_CONNECTION_ERROR",
+          message: err.message
+        }));
       }
     });
     return;

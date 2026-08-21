@@ -321,7 +321,7 @@ async function processAnimalUploadAndScan() {
     let result = null;
     try {
       const baseUrl = (window.location && window.location.origin && window.location.origin !== 'null') ? window.location.origin : 'http://localhost:8080';
-      const resp = await fetch(`${baseUrl}/api/ai/analyze-image`, {
+      const resp = await fetch(`${baseUrl}/api/identify-animal`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -331,26 +331,28 @@ async function processAnimalUploadAndScan() {
         })
       });
 
-      if (resp.ok) {
-        result = await resp.json();
-      }
+      result = await resp.json().catch(() => null);
     } catch (e) {
       console.warn('[ScanAI] Backend vision API endpoint error:', e);
     }
 
-    if (!result) {
+    if (!result || result.success === false) {
+      const errMsg = result ? (result.message || result.error || 'Unable to reach backend vision service') : 'Unable to reach backend vision service';
+      const errCode = result ? (result.errorCode || 'VISION_ERROR') : 'BACKEND_CONNECTION_ERROR';
+      
       result = {
-        common_name: 'Identification Uncertain',
-        animal_name: 'Unknown / Requires GEMINI_API_KEY',
-        scientific_name: 'Unconfigured Backend Vision AI',
+        common_name: errCode === 'GEMINI_KEY_MISSING' ? 'GEMINI_API_KEY Required' : 'Identification Uncertain',
+        animal_name: 'Unknown',
+        scientific_name: errCode || 'Unconfigured Vision AI',
         confidence: 0.0,
         is_uncertain: true,
+        needs_expert_verification: true,
         needs_professional_verification: true,
-        basic_characteristics: 'Visual evidence insufficient for identification.',
-        general_care: 'Please configure GEMINI_API_KEY in .env file to run live AI vision species identification.',
-        food_needs: 'Unable to determine diet.',
-        safety_guidance: 'Consult a veterinarian or wildlife expert for assistance.',
-        uncertainty_warning: 'Unable to confidently identify the animal from this image. Please upload a clearer photo or add GEMINI_API_KEY in .env.'
+        basic_characteristics: `Diagnostic Status: [${errCode}] ${errMsg}`,
+        general_care: 'Please ensure your GEMINI_API_KEY is configured in the project .env file to enable live AI vision species identification.',
+        food_needs: 'Live image recognition requires GEMINI_API_KEY.',
+        safety_guidance: 'Always consult a certified veterinarian or animal expert.',
+        uncertainty_warning: `[${errCode}] ${errMsg}`
       };
     }
 
