@@ -4977,3 +4977,4 @@ function renderCommunityScreenUI(container) {
 // Commit 42: Interactive Google Map canvas
 // Commit 43: Veterinary and shelter map markers
 // Commit 44: Map marker InfoWindows
+// Commit 45: Graceful Maps fallback notice
