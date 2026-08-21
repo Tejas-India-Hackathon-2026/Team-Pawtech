@@ -4954,3 +4954,4 @@ function renderCommunityScreenUI(container) {
 // Commit 14: Analyzing spinner state
 // Commit 18: Species confidence score & uncertainty flagging
 // Commit 19: Species identification result card
+// Commit 20: Food guidelines & safety precautions
