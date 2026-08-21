@@ -297,3 +297,4 @@ server.listen(PORT, () => {
 // Commit 17: Structured species JSON parser
 // Commit 26: Server-side Gemini chat endpoint
 // Commit 27: Veterinary prompt engineering
+// Commit 60: Node.js backend server with live .env hot reloading
