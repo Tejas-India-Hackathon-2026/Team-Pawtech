@@ -4967,3 +4967,4 @@ function renderCommunityScreenUI(container) {
 // Commit 32: Retry query button
 // Commit 33: OpenStreetMap Overpass API integration
 // Commit 34: Vet search filtering by name & city
+// Commit 35: Vet category filter chips
