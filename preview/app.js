@@ -4950,3 +4950,4 @@ function renderCommunityScreenUI(container) {
 // Commit 10: Reminder detail modal with snooze
 // Commit 11: Image upload and camera capture handlers
 // Commit 12: File size and format validation
+// Commit 13: Image preview card rendering
