@@ -4979,3 +4979,4 @@ function renderCommunityScreenUI(container) {
 // Commit 44: Map marker InfoWindows
 // Commit 45: Graceful Maps fallback notice
 // Commit 46: Pet adoption marketplace listing
+// Commit 47: Adoption species filter chips
