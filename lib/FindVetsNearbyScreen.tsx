@@ -51,8 +51,8 @@ export interface UserLocation {
 // SUPABASE CLIENT INITIALIZATION
 // Replace with your actual Supabase Project URL and Anon Key
 // ============================================================================
-const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL || process.env.VITE_SUPABASE_URL || '';
-const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY || '';
+const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL || process.env.VITE_SUPABASE_URL || 'https://hquogbhtaotoyyacyvvj.supabase.co';
+const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_PUBLISHABLE_KEY || process.env.VITE_SUPABASE_ANON_KEY || 'sb_publishable_hd7k2Azv8v5ruJvgmKxUew_TPS62GPp';
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
