@@ -2724,37 +2724,33 @@ async function sendChatMessage(promptOverride) {
       body: JSON.stringify({ message: text, history: history })
     });
 
-    if (res.ok) {
-      const data = await res.json();
-      if (data.reply) {
-        reply = data.reply.replace(/\n/g, '<br>');
-      }
+    const data = await res.json().catch(() => ({}));
+    if (res.ok && data.reply) {
+      reply = data.reply.replace(/\n/g, '<br>');
+    } else if (res.status === 401) {
+      reply = data.reply || "🔑 <b>Gemini API Authentication Error (HTTP 401):</b> GEMINI_API_KEY is unconfigured in your <code>.env</code> file. Please paste your Gemini API Key into <code>.env</code> to connect live AI chat.";
+      isError = true;
+    } else if (res.status === 403) {
+      reply = "⚠️ <b>Gemini API Access Error (HTTP 403):</b> Gemini API access is not permitted for this project/key.";
+      isError = true;
+    } else if (res.status === 404) {
+      reply = "⚠️ <b>Gemini Model Error (HTTP 404):</b> Gemini model or API endpoint was not found. Check the configured model configuration.";
+      isError = true;
+    } else if (res.status === 429) {
+      reply = "⚠️ <b>Gemini Usage Limit Reached (HTTP 429):</b> Usage limit reached for this API key. Please try again later.";
+      isError = true;
     } else {
+      reply = (data.reply || data.error) ? `${data.reply || data.error}` : "⚠️ <b>Gemini Service Error:</b> Gemini service is temporarily unavailable. Please retry.";
       isError = true;
     }
   } catch (e) {
-    console.warn('[PashuMitraAI] Backend AI endpoint error:', e);
+    console.warn('[PashuMitraAI] Backend AI endpoint network error:', e);
+    reply = `⚠️ <b>Network Error:</b> Gemini service connection failed. Please check network connection.<br><button style="margin-top:6px; padding:4px 10px; background:var(--primary); color:white; border:none; border-radius:6px; font-size:11px; cursor:pointer;" onclick="sendChatMessage('${escapeHtml(text)}')"><i class="fa-solid fa-rotate-right"></i> Retry Question</button>`;
     isError = true;
   }
 
-  // Smart Context-Aware Fallback Responses if API key not available or call fails
-  if (!reply) {
-    const lower = text.toLowerCase();
-    if (lower.includes('vaccin') || lower.includes('shot')) {
-      reply = "<b>Core Indian Pet Vaccination Schedule:</b><br>• <b>6-8 Weeks:</b> Puppy DP (Distemper/Parvo)<br>• <b>10-12 Weeks:</b> 7-in-1 Combination (DHPPiL)<br>• <b>14-16 Weeks:</b> Anti-Rabies Vaccine (ARV)<br>• <b>Annual Booster:</b> Repeat ARV + 7-in-1 every 12 months.";
-    } else if (lower.includes('food') || lower.includes('eat') || lower.includes('diet') || lower.includes('suitable')) {
-      reply = "<b>Animal Food Guidelines:</b><br>• <b>Dogs:</b> Cooked rice, chicken, boiled eggs, carrots, pumpkin, kibble. (NO onions, garlic, chocolate, grapes, alcohol).<br>• <b>Cats:</b> High-protein meat, fish, wet cat food. Avoid milk (cats are lactose intolerant).<br>• <b>Cattle:</b> Fresh green fodder, dry straw, grains, mineral mixture (50g/day).<br>• <b>Birds:</b> Millets, sunflower seeds, fresh fruits (apples without seeds).";
-    } else if (lower.includes('stray') || lower.includes('injured') || lower.includes('found')) {
-      reply = "<b>Injured Stray Animal First Steps:</b><br>1. <b>Safety First:</b> Approach quietly without sudden movements. Use a blanket if handling a nervous animal.<br>2. <b>Hydration:</b> Offer clean water nearby.<br>3. <b>First Aid:</b> For minor bleeding, apply gentle pressure with a clean cloth.<br>4. <b>Dispatch Rescue:</b> Tap <b>Alert NGO SOS</b> on the home screen or call <b>Wildlife SOS: 1800-200-9122</b>.";
-    } else if (lower.includes('vet') || lower.includes('doctor') || lower.includes('hospital') || lower.includes('clinic')) {
-      reply = "<b>Finding Nearby Vets & Hospitals:</b><br>Tap the <b>Find Help</b> tab on the bottom navigation bar to view real-time OpenStreetMap GPS locations, phone numbers, and ratings of veterinary clinics and 24x7 animal hospitals near your current location.";
-    } else if (lower.includes('rescued') || lower.includes('rescue')) {
-      reply = "<b>Caring for Rescued Animals:</b><br>1. Create a warm, quiet isolation zone free from loud noises.<br>2. Have a licensed veterinarian perform a deworming and health screening.<br>3. Introduce high-nutrition food gradually to prevent tummy upset.<br>4. List the pet on PashuRakhshak's <b>Adopt</b> marketplace if fostering.";
-    } else if (lower.includes('care') || lower.includes('pet')) {
-      reply = "<b>General Pet Care Guidance:</b><br>• <b>Hydration:</b> Provide fresh, clean water at all times.<br>• <b>Nutrition:</b> Feed age-appropriate, balanced food (avoid chocolates, onions, grapes).<br>• <b>Vaccinations:</b> Keep Anti-Rabies (ARV) and 7-in-1 boosters up to date.<br>• <b>Grooming:</b> Brush fur regularly and check paws for ticks/burrs.<br>• <b>Love & Exercise:</b> Provide daily physical activity and positive engagement.";
-    } else {
-      reply = "Namaste! To care for animals: ensure clean water, balanced food, routine deworming, and safe shelter. For specific health concerns, describe the symptoms or ask a question above!";
-    }
+  if (isError && !reply.includes('Retry Question') && res && res.status !== 401) {
+    reply += `<br><button style="margin-top:6px; padding:4px 10px; background:var(--primary); color:white; border:none; border-radius:6px; font-size:11px; cursor:pointer;" onclick="sendChatMessage('${escapeHtml(text)}')"><i class="fa-solid fa-rotate-right"></i> Retry Question</button>`;
   }
 
   // Emergency Disclaimer Check

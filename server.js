@@ -50,6 +50,9 @@ const MIME_TYPES = {
 
 async function callGeminiApi(payload, apiKey) {
   const models = ['gemini-1.5-flash', 'gemini-2.0-flash', 'gemini-1.5-pro'];
+  let lastStatus = 500;
+  let lastErrorText = 'Gemini service is temporarily unavailable. Please retry.';
+
   for (const model of models) {
     try {
       const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey.trim()}`;
@@ -58,18 +61,35 @@ async function callGeminiApi(payload, apiKey) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
+
       if (res.ok) {
         const data = await res.json();
         const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
         if (text) {
-          return { text, model };
+          return { ok: true, text, model };
+        }
+      } else {
+        lastStatus = res.status;
+        if (res.status === 401) {
+          lastErrorText = "Gemini API authentication failed. Check the API key in .env.";
+          break;
+        } else if (res.status === 403) {
+          lastErrorText = "Gemini API access is not permitted for this project/key.";
+          break;
+        } else if (res.status === 404) {
+          lastErrorText = "Gemini model or API endpoint was not found. Check the configured model/API version.";
+        } else if (res.status === 429) {
+          lastErrorText = "Gemini usage limit reached. Please try again later.";
+        } else {
+          lastErrorText = `Gemini API returned HTTP status ${res.status}. Please retry.`;
         }
       }
     } catch (err) {
-      console.warn(`[GeminiCall] Model ${model} failed:`, err.message);
+      console.warn(`[GeminiCall] Model ${model} network error:`, err.message);
+      lastErrorText = "Gemini service network connection failed. Please check network connection.";
     }
   }
-  return null;
+  return { ok: false, status: lastStatus, error: lastErrorText };
 }
 
 const server = http.createServer(async (req, res) => {
@@ -111,49 +131,63 @@ const server = http.createServer(async (req, res) => {
       try {
         const body = JSON.parse(bodyStr || '{}');
         const userPrompt = body.message || body.prompt || '';
+
+        if (!userPrompt || userPrompt.trim().length === 0) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Empty message prompt provided.' }));
+          return;
+        }
+
         const apiKey = (process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY || '').trim();
 
-        if (apiKey && apiKey.length > 10) {
-          const systemPrompt = "You are Pashu Mitra AI, an empathetic Indian veterinary assistant. Provide concise, expert advice for animal healthcare, stray rescue, monsoon safety, and nutrition. Always include a brief emergency disclaimer when medical symptoms are mentioned.";
-          const payload = {
-            contents: [
-              {
-                role: 'user',
-                parts: [{ text: `${systemPrompt}\n\nUser Question: ${userPrompt}` }]
-              }
-            ]
-          };
-
-          const geminiResult = await callGeminiApi(payload, apiKey);
-          if (geminiResult && geminiResult.text) {
-            res.writeHead(200, { 'Content-Type': 'application/json' });
-            res.end(JSON.stringify({ reply: geminiResult.text, source: geminiResult.model }));
-            return;
-          }
+        if (!apiKey || apiKey.length < 10) {
+          res.writeHead(401, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({
+            status: 401,
+            error: "Gemini API authentication failed. GEMINI_API_KEY is unconfigured in .env.",
+            reply: "🔑 <b>Gemini API Key Required:</b> Please paste your <code>GEMINI_API_KEY</code> into the project <code>.env</code> file to enable live Gemini AI chat."
+          }));
+          return;
         }
 
-        // Smart Vet Rule Fallback if key unconfigured or call fails
-        let fallbackReply = "Namaste! I am Pashu Mitra AI, your veterinary assistant. ";
-        const lower = userPrompt.toLowerCase();
-        if (lower.includes('fever') || lower.includes('vomit') || lower.includes('blood') || lower.includes('injury')) {
-          fallbackReply += "⚠️ Emergency Alert: The symptoms described may require immediate medical attention. Please consult a nearby veterinarian or contact an emergency animal shelter immediately!";
-        } else if (lower.includes('puppy') || lower.includes('dog')) {
-          fallbackReply += "For puppies and dogs: ensure core vaccinations (Rabies, DHPP) are up to date. Keep fresh water accessible, provide balanced high-protein food, and avoid giving cooked bones or chocolate.";
-        } else if (lower.includes('cat') || lower.includes('kitten')) {
-          fallbackReply += "For kittens and cats: provide wet and dry cat food rich in taurine. Ensure clean litter boxes and schedule annual health checkups.";
-        } else if (lower.includes('hi') || lower.includes('hello') || lower.includes('hey')) {
-          fallbackReply += "How can I help you today? Ask me any questions about pet care, vaccinations, stray rescue, or nutrition!";
+        const systemInstruction = "You are Pashu Mitra AI, an empathetic Indian veterinary and animal welfare assistant. Provide expert, concise advice on pet care, stray animal rescue, nutrition, vaccination schedules, and preventive care. For medical emergencies (bleeding, poisoning, seizures, fractures, trauma), clearly advise contacting a qualified veterinarian or emergency shelter immediately rather than presenting AI output as a medical diagnosis.";
+
+        const contents = [];
+        const history = body.history;
+        if (Array.isArray(history) && history.length > 0) {
+          history.slice(-10).forEach(m => {
+            if (m.text && !m.isLoading && !m.text.includes('thinking...')) {
+              contents.push({
+                role: m.role === 'user' ? 'user' : 'model',
+                parts: [{ text: m.text.replace(/<br>/g, '\n').replace(/<[^>]*>/g, '') }]
+              });
+            }
+          });
+        }
+        contents.push({
+          role: 'user',
+          parts: [{ text: `${systemInstruction}\n\nUser Question: ${userPrompt}` }]
+        });
+
+        const payload = { contents };
+
+        const geminiResult = await callGeminiApi(payload, apiKey);
+        if (geminiResult && geminiResult.ok && geminiResult.text) {
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ reply: geminiResult.text, source: geminiResult.model }));
+          return;
         } else {
-          fallbackReply += "For general animal care: ensure daily clean drinking water, adequate dry shelter, timely vaccination boosters, and regular deworming.";
+          res.writeHead(geminiResult.status || 500, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({
+            status: geminiResult.status || 500,
+            error: geminiResult.error || "Gemini service error",
+            reply: `⚠️ <b>Gemini Service Error (${geminiResult.status || 500}):</b> ${geminiResult.error}`
+          }));
+          return;
         }
-
-        fallbackReply += "<br><br><span style='font-size:10px; color:#64748b;'>🔑 <i>Note: Paste your <b>GEMINI_API_KEY</b> in the <code>.env</code> file to unlock live Gemini 1.5 Flash AI responses!</i></span>";
-
-        res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ reply: fallbackReply, source: 'pashu-mitra-fallback' }));
       } catch (err) {
         res.writeHead(500, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ error: err.message }));
+        res.end(JSON.stringify({ error: err.message, reply: `⚠️ Server Error: ${err.message}` }));
       }
     });
     return;
