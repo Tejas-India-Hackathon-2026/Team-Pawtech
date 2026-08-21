@@ -4958,3 +4958,4 @@ function renderCommunityScreenUI(container) {
 // Commit 21: iNaturalist fallback taxonomy dataset
 // Commit 22: AI uncertainty warning disclaimer
 // Commit 23: Scan history logger with localStorage
+// Commit 24: Scan history list screen
