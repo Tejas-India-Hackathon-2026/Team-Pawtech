@@ -723,10 +723,10 @@ function renderScreen() {
 
         <!-- Suggested Preset Question Chips -->
         <div style="display:flex; flex-wrap:wrap; gap:4px; margin-bottom:8px;">
-          <button style="padding:4px 8px; background:white; border:1px solid #86efac; border-radius:12px; font-size:10px; color:#166534; font-weight:bold; cursor:pointer;" onclick="sendImageFollowupChat('What should it eat?')">🌾 What should it eat?</button>
-          <button style="padding:4px 8px; background:white; border:1px solid #86efac; border-radius:12px; font-size:10px; color:#166534; font-weight:bold; cursor:pointer;" onclick="sendImageFollowupChat('How should I care for it?')">🩺 How should I care for it?</button>
-          <button style="padding:4px 8px; background:white; border:1px solid #86efac; border-radius:12px; font-size:10px; color:#166534; font-weight:bold; cursor:pointer;" onclick="sendImageFollowupChat('Is it domestic or wild?')">🐾 Is it domestic or wild?</button>
-          <button style="padding:4px 8px; background:white; border:1px solid #86efac; border-radius:12px; font-size:10px; color:#166534; font-weight:bold; cursor:pointer;" onclick="sendImageFollowupChat('What are common health concerns?')">⚠️ Health concerns?</button>
+          <button style="padding:4px 8px; background:white; border:1px solid #86efac; border-radius:12px; font-size:10px; color:#166534; font-weight:bold; cursor:pointer;" onclick="sendImageFollowupChat('Is animal ko kya khilana chahiye?')">🌾 Is animal ko kya khilana chahiye?</button>
+          <button style="padding:4px 8px; background:white; border:1px solid #86efac; border-radius:12px; font-size:10px; color:#166534; font-weight:bold; cursor:pointer;" onclick="sendImageFollowupChat('Iski care kaise kare?')">🩺 Iski care kaise kare?</button>
+          <button style="padding:4px 8px; background:white; border:1px solid #86efac; border-radius:12px; font-size:10px; color:#166534; font-weight:bold; cursor:pointer;" onclick="sendImageFollowupChat('Ye wild hai ya domestic?')">🐾 Ye wild hai ya domestic?</button>
+          <button style="padding:4px 8px; background:white; border:1px solid #86efac; border-radius:12px; font-size:10px; color:#166534; font-weight:bold; cursor:pointer;" onclick="sendImageFollowupChat('Common health problems kya hote hain?')">⚠️ Health problems?</button>
         </div>
 
         <!-- Messages Output Container -->
