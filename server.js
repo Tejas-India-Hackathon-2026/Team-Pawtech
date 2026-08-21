@@ -469,3 +469,5 @@ server.listen(PORT, () => {
 // Config: Google Maps SDK Fallback Gateway
 
 // CORS: OPTIONS Preflight Handler
+
+// Schema Spec: Gemini 1.5 Flash Vision Response Object
