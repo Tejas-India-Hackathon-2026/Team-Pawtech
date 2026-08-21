@@ -121,3 +121,5 @@ flutter run
 <!-- Security: Server-side API Key Isolation Policy -->
 
 <!-- Community: Open Source Contribution Guidelines -->
+
+<!-- Architecture: SPA Client State Router -->
