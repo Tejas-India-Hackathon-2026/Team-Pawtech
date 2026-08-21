@@ -113,3 +113,5 @@ flutter pub get
 # Run on connected mobile device or emulator
 flutter run
 ```
+
+<!-- Module Architecture: Emergency SOS, Gemini Multimodal Vision AI, Overpass Vets -->
