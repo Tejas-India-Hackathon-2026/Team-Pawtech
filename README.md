@@ -115,3 +115,5 @@ flutter run
 ```
 
 <!-- Module Architecture: Emergency SOS, Gemini Multimodal Vision AI, Overpass Vets -->
+
+<!-- Setup Guide: Windows PowerShell Environment Setup -->
