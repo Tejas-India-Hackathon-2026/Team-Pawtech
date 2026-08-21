@@ -4960,3 +4960,4 @@ function renderCommunityScreenUI(container) {
 // Commit 23: Scan history logger with localStorage
 // Commit 24: Scan history list screen
 // Commit 25: Pashu Mitra AI chat interface
+// Commit 28: Emergency medical disclaimer trigger
