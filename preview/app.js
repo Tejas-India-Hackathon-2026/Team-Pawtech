@@ -4944,3 +4944,4 @@ function renderCommunityScreenUI(container) {
 // Commit 4: Mobile viewport layout shell
 // Commit 5: Welcome hero & role switcher
 // Commit 6: Quick access grid cards
+// Commit 7: Emergency SOS rescue banner
