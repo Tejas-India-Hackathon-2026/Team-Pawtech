@@ -267,32 +267,36 @@ function triggerGalleryUpload() {
   if (input) input.click();
 }
 
+let uploadedAnimalMimeType = 'image/jpeg';
+
 function triggerCameraCapture() {
   uploadErrorText = null;
   const input = document.getElementById('animalCameraInput');
   if (input) input.click();
 }
 
-// Requirement 3 & 4: Image File Selection & Validation
+// Requirement 3 & 4: Image File Selection & Exact MIME Validation
 function handleAnimalFileSelect(event) {
   const file = event.target.files && event.target.files[0];
   if (!file) return;
 
-  // Requirement 4: Validate file type (Image files only)
-  if (!file.type || !file.type.startsWith('image/')) {
-    uploadErrorText = "Invalid file type. Please select a valid image file (JPEG, PNG, WEBP, HEIC).";
+  const validTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/heic'];
+  if (!file.type || !validTypes.includes(file.type.toLowerCase())) {
+    uploadErrorText = "Please upload a JPG, PNG, or WebP image.";
     uploadedAnimalImageData = null;
+    uploadedAnimalMimeType = null;
     renderScreen();
     return;
   }
 
   uploadErrorText = null;
   uploadedAnimalFileName = file.name;
+  uploadedAnimalMimeType = file.type.toLowerCase();
   uploadedAnimalFileSize = (file.size / 1024).toFixed(1) + ' KB';
 
   const reader = new FileReader();
   reader.onload = function(e) {
-    uploadedAnimalImageData = e.target.result; // Requirement 3: Immediate Preview
+    uploadedAnimalImageData = e.target.result; // Immediate Preview of Actual Uploaded Image
     renderScreen();
   };
   reader.readAsDataURL(file);
@@ -322,7 +326,7 @@ async function processAnimalUploadAndScan() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           imageBase64: uploadedAnimalImageData,
-          mimeType: 'image/jpeg',
+          mimeType: uploadedAnimalMimeType || 'image/jpeg',
           fileName: uploadedAnimalFileName || ''
         })
       });
@@ -335,38 +339,24 @@ async function processAnimalUploadAndScan() {
     }
 
     if (!result) {
-      const fName = String(uploadedAnimalFileName || '').toLowerCase();
-      if (fName.includes('cat') || fName.includes('kitten') || fName.includes('tabby') || fName.includes('felis')) {
-        result = {
-          common_name: "Domestic Short Hair Cat (Indian Tabby Cat)",
-          scientific_name: "Felis catus",
-          breed: "Indian Domestic Shorthair",
-          confidence: 0.95,
-          is_uncertain: false,
-          basic_characteristics: "Whiskers, almond-shaped expressive eyes, flexible body, sharp ears, striped or marbled tabby short coat pattern.",
-          general_care: "Provide daily clean water, litter box, taurine-rich cat food, scratching posts, and annual ARV & FVRCP vaccines.",
-          food_needs: "High-protein meat/fish diet, wet or dry cat kibble. Avoid cow milk as adult cats are lactose intolerant.",
-          safety_guidance: "Approach cats softly without loud noises. Allow the cat to sniff your hand before petting.",
-          uncertainty_warning: "AI identification is based on visual features. Add your GEMINI_API_KEY in .env for 100% live Gemini Vision AI diagnosis."
-        };
-      } else {
-        result = {
-          common_name: 'Indian Street Dog (Indie / Desi Dog)',
-          scientific_name: 'Canis lupus familiaris',
-          breed: 'Desi / Native Breed',
-          confidence: 0.92,
-          is_uncertain: false,
-          basic_characteristics: 'Medium build, agile body, short dense coat, upright or semi-floppy ears.',
-          general_care: 'Provide daily clean drinking water, high-protein meals, and annual anti-rabies & deworming treatments.',
-          food_needs: 'Cooked rice with chicken, eggs, or formulated dog kibble. Avoid onions and chocolate.',
-          safety_guidance: 'Approach strays calmly with open palms. Look for ear notches indicating ABC spay/neuter status.',
-          uncertainty_warning: 'AI identification is based on visual features. Consult a certified veterinarian for official medical diagnosis.'
-        };
-      }
+      result = {
+        common_name: 'Identification Uncertain',
+        animal_name: 'Unknown / Requires GEMINI_API_KEY',
+        scientific_name: 'Unconfigured Backend Vision AI',
+        confidence: 0.0,
+        is_uncertain: true,
+        needs_professional_verification: true,
+        basic_characteristics: 'Visual evidence insufficient for identification.',
+        general_care: 'Please configure GEMINI_API_KEY in .env file to run live AI vision species identification.',
+        food_needs: 'Unable to determine diet.',
+        safety_guidance: 'Consult a veterinarian or wildlife expert for assistance.',
+        uncertainty_warning: 'Unable to confidently identify the animal from this image. Please upload a clearer photo or add GEMINI_API_KEY in .env.'
+      };
     }
 
-    if (typeof result.confidence === 'number' && result.confidence < 0.60) {
+    if (typeof result.confidence === 'number' && result.confidence < 0.70) {
       result.is_uncertain = true;
+      result.needs_professional_verification = true;
     }
 
     animalScanResult = result;
@@ -377,11 +367,13 @@ async function processAnimalUploadAndScan() {
   } catch (err) {
     console.error('[processAnimalUploadAndScan] Error:', err);
     animalScanResult = {
-      common_name: 'Analysis Encountered Issue',
+      common_name: 'Unable to identify animal',
+      animal_name: 'Unknown',
       confidence: 0.0,
       is_uncertain: true,
+      needs_professional_verification: true,
       basic_characteristics: 'Visual features could not be processed.',
-      general_care: 'Please try uploading a clearer image.',
+      general_care: 'Please try uploading a clearer photo.',
       uncertainty_warning: 'Unable to analyze image. Please check network connection and try again.'
     };
     isAnalyzingState = false;
@@ -707,7 +699,7 @@ function renderScreen() {
 
       <!-- Action Buttons Bar: Scan Again, Save Result, View History -->
       <div style="display:flex; gap:6px; margin-bottom:10px;">
-        <button style="flex:1; padding:10px 6px; background:var(--primary); color:white; border:none; border-radius:10px; font-size:11px; font-weight:bold; cursor:pointer;" onclick="uploadedAnimalImageData=null; animalScanResult=null; isAnalyzingState=false; navigateTo('identify');">
+        <button style="flex:1; padding:10px 6px; background:var(--primary); color:white; border:none; border-radius:10px; font-size:11px; font-weight:bold; cursor:pointer;" onclick="uploadedAnimalImageData=null; uploadedAnimalFileName=null; uploadedAnimalMimeType=null; animalScanResult=null; isAnalyzingState=false; uploadErrorText=null; navigateTo('identify');">
           <i class="fa-solid fa-rotate-left"></i> Scan Again
         </button>
         <button style="flex:1; padding:10px 6px; background:#0284c7; color:white; border:none; border-radius:10px; font-size:11px; font-weight:bold; cursor:pointer;" onclick="saveScanToHistory(animalScanResult, uploadedAnimalImageData); showToast('Result saved to History!');">

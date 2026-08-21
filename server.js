@@ -170,15 +170,36 @@ const server = http.createServer(async (req, res) => {
         const apiKey = (process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY || '').trim();
 
         if (apiKey && apiKey.length > 10 && imageBase64) {
-          const promptText = `Analyze this animal image. Respond ONLY with valid JSON containing:
+          const cleanData = imageBase64.replace(/^data:image\/\w+;base64,/, '');
+          const promptText = `You are an expert zoologist and animal identification AI assistant.
+CRITICAL INSTRUCTION: Analyze ONLY the provided image itself. Do NOT infer or guess from filenames, UI text, or example data. Examine visual evidence visible in the image (ears, snout, coat, paws, wings, beak, body structure).
+
+You MUST respond ONLY with valid JSON using this exact format (no markdown fences around JSON if possible, or simple raw JSON):
 {
-  "common_name": "Species name",
-  "confidence": 0.95,
-  "basic_characteristics": "Description of physical traits",
-  "general_care": "Care & housing guidelines",
-  "food_needs": "Nutritional needs & diet",
-  "safety_guidance": "Safety precautions for humans & strays",
-  "uncertainty_warning": "Disclaimer regarding AI identification accuracy"
+  "animal_name": "Common species name (e.g. Rabbit, Domestic Cat, Indian Street Dog, Rose-ringed Parakeet, Cow, Horse, Snake, etc.)",
+  "scientific_name": "Binomial scientific name (e.g. Oryctolagus cuniculus)",
+  "confidence": 0.92,
+  "species_group": "Taxonomic group (e.g. Mammal, Bird, Reptile, Amphibian)",
+  "domestic_or_wild": "Domestic or Wild",
+  "visual_evidence": ["Key visual feature 1", "Key visual feature 2"],
+  "basic_care": ["Care instruction 1", "Care instruction 2"],
+  "food_guidance": ["Diet guidance 1", "Diet guidance 2"],
+  "safety_guidance": "Safety precautions for handling or approaching",
+  "needs_professional_verification": false
+}
+
+If the image is blurry, cropped, too dark, corrupted, or does NOT contain a clearly recognizable animal, return:
+{
+  "animal_name": "Unknown / Unclear Image",
+  "scientific_name": "",
+  "confidence": 0.0,
+  "species_group": "Uncertain",
+  "domestic_or_wild": "Uncertain",
+  "visual_evidence": ["Visual evidence insufficient for identification"],
+  "basic_care": ["Please upload a clearer, well-lit photo of the animal"],
+  "food_guidance": ["Unable to determine diet"],
+  "safety_guidance": "Consult a veterinarian or wildlife expert for assistance",
+  "needs_professional_verification": true
 }`;
 
           const payload = {
@@ -186,7 +207,7 @@ const server = http.createServer(async (req, res) => {
               {
                 parts: [
                   { text: promptText },
-                  { inlineData: { mimeType, data: imageBase64.replace(/^data:image\/\w+;base64,/, '') } }
+                  { inlineData: { mimeType, data: cleanData } }
                 ]
               }
             ]
@@ -197,8 +218,25 @@ const server = http.createServer(async (req, res) => {
             try {
               const cleanedText = geminiResult.text.replace(/```json/g, '').replace(/```/g, '').trim();
               const parsed = JSON.parse(cleanedText);
+              
+              // Normalize keys for UI compatibility
+              const normalized = {
+                common_name: parsed.animal_name || parsed.common_name || "Unknown",
+                animal_name: parsed.animal_name || parsed.common_name || "Unknown",
+                scientific_name: parsed.scientific_name || "",
+                confidence: typeof parsed.confidence === 'number' ? parsed.confidence : 0.9,
+                species_group: parsed.species_group || "Mammal",
+                is_domestic: (parsed.domestic_or_wild || '').toLowerCase().includes('domestic'),
+                visual_evidence: parsed.visual_evidence || [],
+                general_care: Array.isArray(parsed.basic_care) ? parsed.basic_care.join('. ') : (parsed.basic_care || parsed.general_care || ''),
+                food_needs: Array.isArray(parsed.food_guidance) ? parsed.food_guidance.join('. ') : (parsed.food_guidance || parsed.food_needs || ''),
+                safety_guidance: parsed.safety_guidance || '',
+                needs_professional_verification: parsed.needs_professional_verification === true || (parsed.confidence || 0) < 0.7,
+                is_uncertain: parsed.needs_professional_verification === true || (parsed.confidence || 0) < 0.7
+              };
+
               res.writeHead(200, { 'Content-Type': 'application/json' });
-              res.end(JSON.stringify(parsed));
+              res.end(JSON.stringify(normalized));
               return;
             } catch (pErr) {
               console.warn('[VisionJSON] Error parsing Gemini JSON output:', pErr);
@@ -206,57 +244,21 @@ const server = http.createServer(async (req, res) => {
           }
         }
 
-        const fileName = String(body.fileName || '').toLowerCase();
-        const base64Str = String(imageBase64 || '').toLowerCase();
-
-        const isCat = fileName.includes('cat') || fileName.includes('kitten') || fileName.includes('tabby') || fileName.includes('felis') || fileName.includes('pussy') || base64Str.includes('cat');
-        const isCow = fileName.includes('cow') || fileName.includes('cattle') || fileName.includes('gau') || fileName.includes('calf');
-        const isBird = fileName.includes('bird') || fileName.includes('parrot') || fileName.includes('pigeon') || fileName.includes('owl');
-
-        let fallbackObj = {
-          common_name: "Indian Street Dog (Indie / Desi Dog)",
-          confidence: 0.93,
-          basic_characteristics: "Medium build, short coat, highly adaptable, intelligent, resilient native Indian canine breed.",
-          general_care: "Requires regular exercise, clean water, dry shelter, and annual rabies & anti-parasite treatments.",
-          food_needs: "High-protein diet, rice with boiled chicken/eggs, or formulated pet food. Avoid chocolates and onions.",
-          safety_guidance: "Approach unfamiliar dogs gently with flat palms. Look for collar tags or ear notches indicating ABC vaccination.",
-          uncertainty_warning: "AI identification is based on visual patterns. Add your GEMINI_API_KEY in .env to enable 100% live multi-species AI vision identification."
-        };
-
-        if (isCat) {
-          fallbackObj = {
-            common_name: "Domestic Short Hair Cat (Indian Tabby Cat)",
-            confidence: 0.95,
-            basic_characteristics: "Whiskers, almond-shaped expressive eyes, flexible body, sharp ears, striped/tabby or solid short coat pattern.",
-            general_care: "Provide daily clean water, litter box, taurine-rich cat food, scratching posts, and annual ARV & FVRCP vaccines.",
-            food_needs: "High-protein meat/fish diet, wet or dry cat kibble. Avoid cow milk as adult cats are lactose intolerant.",
-            safety_guidance: "Approach cats softly without loud noises. Allow the cat to sniff your hand before petting.",
-            uncertainty_warning: "AI identification is based on visual features. Add your GEMINI_API_KEY in .env for live Gemini Vision AI diagnosis."
-          };
-        } else if (isCow) {
-          fallbackObj = {
-            common_name: "Indian Zebu Cattle (Desi Cow / Gau)",
-            confidence: 0.94,
-            basic_characteristics: "Distinctive shoulder hump, large dewlap, prominent horns, short smooth coat adapted to tropical climate.",
-            general_care: "Provide clean drinking water (40-60L/day), dry shaded shelter, mineral mixture supplements, and FMD vaccinations.",
-            food_needs: "Fresh green fodder, dry straw, mineral mixtures, and grain concentrates.",
-            safety_guidance: "Avoid standing directly behind cattle. Speak gently when approaching.",
-            uncertainty_warning: "AI identification is based on visual patterns."
-          };
-        } else if (isBird) {
-          fallbackObj = {
-            common_name: "Rose-ringed Parakeet (Indian Ringneck)",
-            confidence: 0.92,
-            basic_characteristics: "Vibrant green plumage, curved red beak, long tail feathers, distinctive neck ring on adult males.",
-            general_care: "Provide spacious cage or aviary, fresh water daily, perches, and annual vet checkups.",
-            food_needs: "Millets, sunflower seeds, green veggies, fresh fruits (apples without seeds).",
-            safety_guidance: "Handle gently without squeezing chest. Keep away from ceiling fans.",
-            uncertainty_warning: "AI identification is based on visual patterns."
-          };
-        }
-
+        // Unconfigured API Key or API error fallback (NO HARDCODED FAKE SPECIES)
         res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify(fallbackObj));
+        res.end(JSON.stringify({
+          common_name: "Identification Uncertain (GEMINI_API_KEY Required)",
+          animal_name: "Unknown / Requires GEMINI_API_KEY",
+          scientific_name: "Unconfigured Backend Vision AI",
+          confidence: 0.0,
+          is_uncertain: true,
+          needs_professional_verification: true,
+          visual_evidence: ["Gemini 1.5 Vision API Key is unconfigured in .env"],
+          general_care: "Paste your GEMINI_API_KEY in the project .env file to run live AI vision identification on actual uploaded images.",
+          food_needs: "Live image recognition requires GEMINI_API_KEY.",
+          safety_guidance: "Always approach unfamiliar animals with caution. Consult a licensed veterinarian.",
+          uncertainty_warning: "Unable to run live AI vision analysis. Please add your GEMINI_API_KEY to the .env file."
+        }));
       } catch (err) {
         res.writeHead(500, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ error: err.message }));
