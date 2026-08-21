@@ -4949,3 +4949,4 @@ function renderCommunityScreenUI(container) {
 // Commit 9: Dynamic remaining time calculation
 // Commit 10: Reminder detail modal with snooze
 // Commit 11: Image upload and camera capture handlers
+// Commit 12: File size and format validation
