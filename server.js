@@ -471,3 +471,5 @@ server.listen(PORT, () => {
 // CORS: OPTIONS Preflight Handler
 
 // Schema Spec: Gemini 1.5 Flash Vision Response Object
+
+// Security: Sanitize JSON Parsing Tracebacks
