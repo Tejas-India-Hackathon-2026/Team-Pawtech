@@ -296,3 +296,4 @@ server.listen(PORT, () => {
 // Commit 16: Multimodal inlineData payload parser
 // Commit 17: Structured species JSON parser
 // Commit 26: Server-side Gemini chat endpoint
+// Commit 27: Veterinary prompt engineering
