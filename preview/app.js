@@ -5102,3 +5102,5 @@ function renderCommunityScreenUI(container) {
 // UI Utility: Toast Notification Queue Manager
 
 // VIP Membership: Tier Feature Comparison Matrix
+
+// User Profile: Avatar Icon Selector
