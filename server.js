@@ -179,8 +179,9 @@ const server = http.createServer(async (req, res) => {
         }
 
         let systemInstruction = `You are Pashu Mitra AI, an empathetic Indian veterinary and animal welfare assistant fluent in English, Hindi, and Hinglish.
+Analyze the provided animal photo visually.
 Provide expert, concise advice on pet care, stray animal rescue, nutrition, vaccination schedules, and preventive care.
-Understand questions in English, Hindi, or Hinglish (e.g. "Is animal ko kya khilana chahiye?", "Iski care kaise kare?", "Ye wild hai ya domestic?") and reply in clear, friendly, structured language.
+Understand questions in English, Hindi, or Hinglish (e.g. "Is animal ko kya khilana chahiye?", "Iski care kaise kare?", "Ye wild hai ya domestic?") and reply in clear, friendly, structured language based on the actual image.
 For medical emergencies (bleeding, poisoning, seizures, fractures, trauma), advise contacting a veterinarian or emergency shelter immediately.`;
 
         if (body.imageContext && (body.imageContext.animal_name || body.imageContext.common_name)) {
@@ -188,26 +189,9 @@ For medical emergencies (bleeding, poisoning, seizures, fractures, trauma), advi
           const aName = c.animal_name || c.common_name;
           const sName = c.scientific_name || '';
           const breed = c.breed_or_type || c.breed || '';
-          const conf = typeof c.confidence === 'number' ? `${Math.round(c.confidence * 100)}%` : '90%';
           const classif = c.classification || (c.is_domestic ? 'Domestic' : 'Wild');
-          const care = Array.isArray(c.care) ? c.care.join('; ') : (c.general_care || '');
-          const food = Array.isArray(c.food) ? c.food.join('; ') : (c.food_needs || '');
-          const habitat = c.habitat || '';
-          const health = Array.isArray(c.common_health_concerns) ? c.common_health_concerns.join('; ') : '';
-          const safety = c.safety_guidance || c.safety || '';
 
-          systemInstruction += `\n\nACTIVE UPLOADED IMAGE CONTEXT:
-Subject Name: ${aName} (${sName})
-Breed/Type: ${breed}
-Confidence: ${conf}
-Classification: ${classif}
-Basic Care: ${care}
-Food/Nutrition: ${food}
-Habitat: ${habitat}
-Common Problems: ${health}
-Safety Information: ${safety}
-
-Answer questions specifically about this identified animal in the image context. Respond in the user's language (Hinglish/Hindi/English).`;
+          systemInstruction += `\n\nIDENTIFIED SUBJECT IN IMAGE: ${aName} (${sName}) [${breed}] - Classification: ${classif}. Focus answers directly on this identified animal visible in the image.`;
         }
 
         const contents = [];
@@ -222,9 +206,18 @@ Answer questions specifically about this identified animal in the image context.
             }
           });
         }
+
+        const userParts = [];
+        if (body.imageBase64) {
+          const cleanData = body.imageBase64.replace(/^data:image\/\w+;base64,/, '');
+          const mimeType = body.mimeType || 'image/jpeg';
+          userParts.push({ inlineData: { mimeType, data: cleanData } });
+        }
+        userParts.push({ text: `${systemInstruction}\n\nUser Question: ${userPrompt}` });
+
         contents.push({
           role: 'user',
-          parts: [{ text: `${systemInstruction}\n\nUser Question: ${userPrompt}` }]
+          parts: userParts
         });
 
         const payload = { contents };
