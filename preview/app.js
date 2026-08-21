@@ -4942,3 +4942,4 @@ function renderCommunityScreenUI(container) {
 // Commit 2: Centralized i18n translation system
 // Commit 3: HTML5 pushState & popstate router
 // Commit 4: Mobile viewport layout shell
+// Commit 5: Welcome hero & role switcher
