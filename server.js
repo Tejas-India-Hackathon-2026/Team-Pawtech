@@ -467,3 +467,5 @@ server.listen(PORT, () => {
 // Documentation: Real-time .env Hot-Reloading Gateway
 
 // Config: Google Maps SDK Fallback Gateway
+
+// CORS: OPTIONS Preflight Handler
