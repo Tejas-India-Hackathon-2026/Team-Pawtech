@@ -292,3 +292,4 @@ server.listen(PORT, () => {
   console.log(` Real-time .env Hot Reload Active for GEMINI_API_KEY & VITE_GOOGLE_MAPS_API_KEY`);
   console.log(`================================================================`);
 });
+// Commit 15: Gemini 1.5 Flash Vision backend endpoint
