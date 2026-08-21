@@ -4,3 +4,5 @@
 // Test Case: Multi-turn Chat Role Mapping
 
 // Test Case: LocalStorage Storage Quota Validation
+
+// Test Helper: Multimodal Image Payload Generator
