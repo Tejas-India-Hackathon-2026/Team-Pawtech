@@ -285,6 +285,7 @@ function handleAnimalFileSelect(event) {
     uploadErrorText = "Please upload a JPG, PNG, or WebP image.";
     uploadedAnimalImageData = null;
     uploadedAnimalMimeType = null;
+    animalScanResult = null;
     renderScreen();
     return;
   }
@@ -294,15 +295,19 @@ function handleAnimalFileSelect(event) {
   uploadedAnimalMimeType = file.type.toLowerCase();
   uploadedAnimalFileSize = (file.size / 1024).toFixed(1) + ' KB';
 
+  // WIPE ALL PREVIOUS SCAN RESULTS & CHAT CONTEXT IMMEDIATELY
+  animalScanResult = null;
+  imageChatHistory = [];
+
   const reader = new FileReader();
   reader.onload = function(e) {
     uploadedAnimalImageData = e.target.result; // Immediate Preview of Actual Uploaded Image
-    renderScreen();
+    processAnimalUploadAndScan(); // Run Gemini Vision API on the newly selected image automatically
   };
   reader.readAsDataURL(file);
 }
 
-// Process Upload, call Backend Gemini Vision API (/api/ai/analyze-image), display result
+// Process Upload, call Backend Gemini Vision API (/api/identify-animal), display result
 async function processAnimalUploadAndScan() {
   if (!uploadedAnimalImageData) {
     uploadErrorText = 'Please select or capture an image first.';
@@ -310,9 +315,10 @@ async function processAnimalUploadAndScan() {
     return;
   }
 
-  // Show loading spinner
+  // Show loading spinner for NEW upload
   isAnalyzingState = true;
   animalScanResult = null;
+  imageChatHistory = [];
   renderScreen();
 
   try {
@@ -341,8 +347,9 @@ async function processAnimalUploadAndScan() {
       const errCode = result ? (result.errorCode || 'VISION_ERROR') : 'BACKEND_CONNECTION_ERROR';
       
       result = {
-        common_name: errCode === 'GEMINI_KEY_MISSING' ? 'GEMINI_API_KEY Required' : 'Identification Uncertain',
-        animal_name: 'Unknown',
+        success: false,
+        common_name: errCode === 'GEMINI_KEY_MISSING' ? 'GEMINI_API_KEY Required in .env' : 'Identification Failed',
+        animal_name: errCode === 'GEMINI_KEY_MISSING' ? 'GEMINI_API_KEY Required in .env' : 'Unknown Animal',
         scientific_name: errCode || 'Unconfigured Vision AI',
         confidence: 0.0,
         is_uncertain: true,
@@ -350,7 +357,7 @@ async function processAnimalUploadAndScan() {
         needs_professional_verification: true,
         basic_characteristics: `Diagnostic Status: [${errCode}] ${errMsg}`,
         general_care: 'Please ensure your GEMINI_API_KEY is configured in the project .env file to enable live AI vision species identification.',
-        food_needs: 'Live image recognition requires GEMINI_API_KEY.',
+        food_needs: 'Live image recognition requires GEMINI_API_KEY in .env file.',
         safety_guidance: 'Always consult a certified veterinarian or animal expert.',
         uncertainty_warning: `[${errCode}] ${errMsg}`
       };
@@ -369,14 +376,15 @@ async function processAnimalUploadAndScan() {
   } catch (err) {
     console.error('[processAnimalUploadAndScan] Error:', err);
     animalScanResult = {
-      common_name: 'Unable to identify animal',
+      success: false,
+      common_name: 'Unable to identify animal photo',
       animal_name: 'Unknown',
       confidence: 0.0,
       is_uncertain: true,
       needs_professional_verification: true,
       basic_characteristics: 'Visual features could not be processed.',
-      general_care: 'Please try uploading a clearer photo.',
-      uncertainty_warning: 'Unable to analyze image. Please check network connection and try again.'
+      general_care: 'Please check your connection or upload a clearer photo.',
+      uncertainty_warning: 'Unable to analyze image. Please try again.'
     };
     isAnalyzingState = false;
     currentScreen = 'identify-result';
@@ -671,9 +679,9 @@ function renderScreen() {
             <i class="fa-solid ${r && !isUncertain ? 'fa-paw' : 'fa-question-circle'}"></i>
           </div>
           <div>
-            <h4 style="font-size:14px; font-weight:800;">${r ? r.common_name : 'Analyzing...'}</h4>
+            <h4 style="font-size:14px; font-weight:800;">${r ? (r.animal_name || r.common_name || 'Analyzing...') : 'Analyzing...'}</h4>
             <p style="font-size:10px; color:var(--text-secondary); font-style:italic;">${r ? (r.scientific_name || '') : ''}</p>
-            <p style="font-size:10px; color:var(--text-secondary);">${r ? (r.breed || '') : ''}</p>
+            <p style="font-size:10px; color:var(--text-secondary);">${r ? (r.breed_or_type || r.breed || '') : ''}</p>
             <div style="display:flex; gap:4px; margin-top:4px;">
               <span class="pill ${isUncertain ? 'warning' : 'safe'}">${confPct}% Confidence</span>
               <span class="pill" style="background:${dangerColor}20; color:${dangerColor};">${dangerLabel}</span>
@@ -682,15 +690,15 @@ function renderScreen() {
           </div>
         </div>
 
-        ${r && r.diet ? `
+        ${r && (r.food_needs || r.food || r.diet) ? `
           <hr style="border:none; border-top:1px solid var(--border); margin:8px 0;">
-          <div style="font-size:11px; margin-bottom:6px;"><b style="color:var(--primary);"><i class="fa-solid fa-seedling"></i> Diet & Food:</b> ${r.diet}</div>
+          <div style="font-size:11px; margin-bottom:6px;"><b style="color:var(--primary);"><i class="fa-solid fa-seedling"></i> Diet & Food:</b> ${Array.isArray(r.food) ? r.food.join(', ') : (r.food_needs || r.diet)}</div>
         ` : ''}
         ${r && r.habitat ? `
           <div style="font-size:11px; margin-bottom:6px;"><b style="color:#0284c7;"><i class="fa-solid fa-earth-asia"></i> Habitat & Environment:</b> ${r.habitat}</div>
         ` : ''}
-        ${r && r.general_care ? `
-          <div style="font-size:11px;"><b style="color:#7c3aed;"><i class="fa-solid fa-stethoscope"></i> General Care:</b> ${r.general_care}</div>
+        ${r && (r.general_care || r.care) ? `
+          <div style="font-size:11px;"><b style="color:#7c3aed;"><i class="fa-solid fa-stethoscope"></i> General Care:</b> ${Array.isArray(r.care) ? r.care.join('. ') : (r.general_care || r.care)}</div>
         ` : ''}
 
         <hr style="border:none; border-top:1px solid var(--border); margin:8px 0;">
