@@ -463,3 +463,5 @@ server.listen(PORT, () => {
 // PashuRakshak Server Gateway Diagnostics Active
 
 /** JSDoc: POST /api/identify-animal JSON payload definition */
+
+// Documentation: Real-time .env Hot-Reloading Gateway
