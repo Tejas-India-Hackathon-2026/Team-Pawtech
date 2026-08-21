@@ -4965,3 +4965,4 @@ function renderCommunityScreenUI(container) {
 // Commit 30: Voice mic recording simulation
 // Commit 31: Chat history persistence
 // Commit 32: Retry query button
+// Commit 33: OpenStreetMap Overpass API integration
