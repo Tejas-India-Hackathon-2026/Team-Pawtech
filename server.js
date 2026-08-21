@@ -303,27 +303,27 @@ Answer questions specifically about this identified animal in the image context.
 
         const cleanData = imageBase64.replace(/^data:image\/\w+;base64,/, '');
         const promptText = `You are PashuRakshak's multimodal animal-care assistant.
-CRITICAL INSTRUCTION: Analyze ONLY the provided image itself. Do NOT infer or guess from filenames, UI text, or example data. Focus strictly on the visual evidence visible in the image bytes (ears, snout, coat, paws, wings, beak, body structure).
+CRITICAL MANDATE: Analyze ONLY the raw image bytes provided in this request. Examine the physical visual features in the image (such as ear shape, snout length, coat texture, paws, eyes, beak, wings, tail, or body morphology). Do NOT use any example names or previous text.
 
-You MUST respond ONLY with valid JSON using this exact structure (no markdown fences around JSON):
+Respond ONLY in valid raw JSON with this schema (no markdown formatting):
 {
   "identified": true,
-  "animal_name": "Common species name (e.g. Rabbit, Domestic Short Hair Cat, Indian Street Dog, Rose-ringed Parakeet, Zebu Cow, Horse, Snake, etc.)",
-  "scientific_name": "Binomial scientific name (e.g. Oryctolagus cuniculus)",
-  "breed_or_type": "Breed or type classification",
-  "confidence": 0.94,
-  "classification": "Domestic or Wild",
-  "visual_evidence": ["Key visual feature 1 visible in image", "Key visual feature 2 visible in image"],
-  "basic_information": "Concise overview of the identified subject",
-  "care": ["Care & housing instruction 1", "Care & housing instruction 2"],
-  "food": ["Diet & nutrition guideline 1", "Diet & nutrition guideline 2"],
-  "habitat": "Natural or domestic habitat",
-  "common_health_concerns": ["Health concern 1", "Health concern 2"],
-  "safety_guidance": "Safety precautions for handling or approaching",
+  "animal_name": "<exact common name of identified animal in image>",
+  "scientific_name": "<binomial scientific name>",
+  "breed_or_type": "<breed, subtype or variety>",
+  "confidence": 0.95,
+  "classification": "<Domestic or Wild>",
+  "visual_evidence": ["<specific visual detail 1 seen in photo>", "<specific visual detail 2 seen in photo>"],
+  "basic_information": "<overview of the identified subject>",
+  "care": ["<housing & care tip 1>", "<housing & care tip 2>"],
+  "food": ["<specific diet requirement 1>", "<specific diet requirement 2>"],
+  "habitat": "<natural or domestic environment>",
+  "common_health_concerns": ["<health issue 1>", "<health issue 2>"],
+  "safety_guidance": "<handling & safety instructions>",
   "expert_verification_required": false
 }
 
-If the image is blurry, cropped, too dark, corrupted, or does NOT contain a clearly recognizable animal, return:
+If the image does not show a recognizable animal or is unclear:
 {
   "identified": false,
   "animal_name": "Unknown",
@@ -331,13 +331,13 @@ If the image is blurry, cropped, too dark, corrupted, or does NOT contain a clea
   "breed_or_type": "",
   "confidence": 0.0,
   "classification": "Uncertain",
-  "visual_evidence": ["Visual evidence insufficient for identification"],
-  "basic_information": "Unable to confidently identify the subject from this image.",
-  "care": ["Please upload a clearer, well-lit photo of the animal"],
-  "food": ["Unable to determine diet"],
+  "visual_evidence": ["Image clarity insufficient"],
+  "basic_information": "Unable to identify animal from this photo. Please upload a clear photo.",
+  "care": ["Consult a veterinarian or local animal authority"],
+  "food": [],
   "habitat": "Uncertain",
   "common_health_concerns": [],
-  "safety_guidance": "Consult a veterinarian or wildlife expert for assistance",
+  "safety_guidance": "Always exercise caution near unknown animals.",
   "expert_verification_required": true
 }`;
 
